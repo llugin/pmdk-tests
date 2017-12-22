@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Intel Corporation
+ * Copyright 2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,30 +30,38 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "local_configuration.h"
+#ifndef US_REMOTE_REPLICAS_TESTS_H
+#define US_REMOTE_REPLICAS_TESTS_H
 
-int LocalConfiguration::FillConfigFields(pugi::xml_node &&root) {
-  root = root.child("localConfiguration");
+#include "unsafe_shutdown.h"
 
-  if (root.empty()) {
-    std::cerr << "Cannot find 'localConfiguration' node" << std::endl;
-    return -1;
-  }
+struct remote_poolset {
+  std::string host;
+  std::vector<DimmDevice> us_dimms;
+  Poolset poolset;
+  std::string GetSectionLine();
+};
 
-  test_dir_ = root.child("testDir").text().get();
+struct remote_poolset_tc {
+  std::vector<remote_poolset> remote_poolsets;
+  Poolset poolset;
+  std::vector<DimmDevice> us_dimms;
+  bool enough_dimms;
+  bool is_syncable;
+};
 
-  ApiC api_c;
-  if (test_dir_.empty() || !api_c.DirectoryExists(this->test_dir_)) {
-    std::cerr << "Directory does not exist. Please change " << this->test_dir_
-              << " field." << std::endl;
-    return -1;
-  }
+class SyncRemoteReplica
+    : public UnsafeShutdown,
+      public ::testing::WithParamInterface<remote_poolset_tc> {
+ protected:
+  void SetUp() override;
+  void InjectRemote(remote_poolset rp);
+  void ConfirmInjectedRemote(remote_poolset rp);
+  std::string remote_bin_dir_;
+};
 
-  test_dir_ += SEPARATOR + "pmdk_tests" + SEPARATOR;
-  if (!api_c.DirectoryExists(test_dir_) &&
-      api_c.CreateDirectoryT(test_dir_) != 0) {
-    return -1;
-  }
+std::ostream& operator<<(std::ostream& stream, remote_poolset_tc const& p);
 
-  return 0;
-}
+std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams();
+
+#endif  // US_REMOTE_REPLICAS_TESTS_H

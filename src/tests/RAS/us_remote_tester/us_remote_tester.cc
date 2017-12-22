@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Intel Corporation
+ * Copyright 2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,30 +30,42 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "local_configuration.h"
+#include "us_remote_tester.h"
 
-int LocalConfiguration::FillConfigFields(pugi::xml_node &&root) {
-  root = root.child("localConfiguration");
+void USRemoteTester::SetUp() {
+  ASSERT_TRUE(ssh_runner_.WaitForConnection(1));
+}
 
-  if (root.empty()) {
-    std::cerr << "Cannot find 'localConfiguration' node" << std::endl;
-    return -1;
+bool USRemoteTester::AllPassed(Output<char> out) {
+  return out.GetContent().find("Return code of tests execution: 0") !=
+         std::string::npos;
+}
+
+void USRemoteTester::PhaseExecute(std::string filter, bool shutdown) {
+  std::string arg = (shutdown ? "shutdown" : "");
+  std::string cmd = rpmem_env + binary_path_ + " " + arg + " " + filter;
+  std::cout << "Executing command: " << cmd << std::endl;
+
+  auto out = ssh_runner_.ExecuteRemote(cmd);
+  std::cout << out.GetContent() << std::endl;
+
+  if (shutdown) {
+    ASSERT_EQ(out.GetExitCode(), ssh_runner_.connection_error_);
   }
+  EXPECT_TRUE(AllPassed(out)) << out.GetContent();
+}
 
-  test_dir_ = root.child("testDir").text().get();
+TEST_F(USRemoteTester, USC_TEST) {
+  std::string before_filter = "--gtest_filter=\"" + filter + "*_before_us*\"";
+  ASSERT_NO_FATAL_FAILURE(PhaseExecute(before_filter, true));
+  ASSERT_TRUE(ssh_runner_.WaitForConnection(5));
 
-  ApiC api_c;
-  if (test_dir_.empty() || !api_c.DirectoryExists(this->test_dir_)) {
-    std::cerr << "Directory does not exist. Please change " << this->test_dir_
-              << " field." << std::endl;
-    return -1;
-  }
+  std::string after_filter =
+      "--gtest_filter=\"" + filter + "*_after_first_us*\"";
+  ASSERT_NO_FATAL_FAILURE(PhaseExecute(after_filter, true));
+  ASSERT_TRUE(ssh_runner_.WaitForConnection(5));
 
-  test_dir_ += SEPARATOR + "pmdk_tests" + SEPARATOR;
-  if (!api_c.DirectoryExists(test_dir_) &&
-      api_c.CreateDirectoryT(test_dir_) != 0) {
-    return -1;
-  }
-
-  return 0;
+  std::string after_second_filter =
+      "--gtest_filter=\"" + filter + "*_after_second_us*\"";
+  ASSERT_NO_FATAL_FAILURE(PhaseExecute(after_second_filter, false));
 }

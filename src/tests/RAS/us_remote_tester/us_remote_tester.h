@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Intel Corporation
+ * Copyright 2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,30 +30,27 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "local_configuration.h"
+#ifndef USC_REMOTE_TESTER_H
+#define USC_REMOTE_TESTER_H
 
-int LocalConfiguration::FillConfigFields(pugi::xml_node &&root) {
-  root = root.child("localConfiguration");
+#include <vector>
+#include "gtest/gtest.h"
+#include "shell/i_shell.h"
+#include "ssh_runner.h"
 
-  if (root.empty()) {
-    std::cerr << "Cannot find 'localConfiguration' node" << std::endl;
-    return -1;
-  }
+extern std::string filter;
+extern std::string address;
+extern std::string rpmem_env;
 
-  test_dir_ = root.child("testDir").text().get();
+class USRemoteTester : public ::testing::Test {
+ public:
+  SshRunner ssh_runner_{address};  // from config.xml
+  std::string binary_path_ = "/home/leszekl/repos/pmdk-tests/build/" +
+                             SEPARATOR +
+                             "UNSAFE_SHUTDOWN";  // path remote_host->bin_dir
+  void SetUp() override;
+  bool AllPassed(Output<char> out);
+  void PhaseExecute(std::string filter, bool shutdown);
+};
 
-  ApiC api_c;
-  if (test_dir_.empty() || !api_c.DirectoryExists(this->test_dir_)) {
-    std::cerr << "Directory does not exist. Please change " << this->test_dir_
-              << " field." << std::endl;
-    return -1;
-  }
-
-  test_dir_ += SEPARATOR + "pmdk_tests" + SEPARATOR;
-  if (!api_c.DirectoryExists(test_dir_) &&
-      api_c.CreateDirectoryT(test_dir_) != 0) {
-    return -1;
-  }
-
-  return 0;
-}
+#endif /* USC_REMOTE_TESTER_H */

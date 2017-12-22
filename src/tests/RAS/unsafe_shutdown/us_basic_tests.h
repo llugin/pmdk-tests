@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Intel Corporation
+ * Copyright 2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,30 +30,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "local_configuration.h"
+#ifndef US_BASIC_TESTS_H
+#define US_BASIC_TESTS_H
 
-int LocalConfiguration::FillConfigFields(pugi::xml_node &&root) {
-  root = root.child("localConfiguration");
+#include "unsafe_shutdown.h"
 
-  if (root.empty()) {
-    std::cerr << "Cannot find 'localConfiguration' node" << std::endl;
-    return -1;
-  }
+class UnsafeShutdownBasic : public UnsafeShutdown {
+ protected:
+  void SetUp() override;
+  std::string us_dimm_pool_path_;
+  size_t blk_size_ = PMEMBLK_MIN_BLK;
+};
 
-  test_dir_ = root.child("testDir").text().get();
-
-  ApiC api_c;
-  if (test_dir_.empty() || !api_c.DirectoryExists(this->test_dir_)) {
-    std::cerr << "Directory does not exist. Please change " << this->test_dir_
-              << " field." << std::endl;
-    return -1;
-  }
-
-  test_dir_ += SEPARATOR + "pmdk_tests" + SEPARATOR;
-  if (!api_c.DirectoryExists(test_dir_) &&
-      api_c.CreateDirectoryT(test_dir_) != 0) {
-    return -1;
-  }
-
-  return 0;
-}
+#endif  // US_BASIC_TESTS_H

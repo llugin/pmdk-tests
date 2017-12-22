@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Intel Corporation
+ * Copyright 2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,30 +30,37 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "local_configuration.h"
+#include "dimm_device.h"
 
-int LocalConfiguration::FillConfigFields(pugi::xml_node &&root) {
-  root = root.child("localConfiguration");
-
-  if (root.empty()) {
-    std::cerr << "Cannot find 'localConfiguration' node" << std::endl;
-    return -1;
-  }
-
-  test_dir_ = root.child("testDir").text().get();
-
+DimmDevice::DimmDevice(std::string mountpoint) {
+  this->mountpoint_ = mountpoint;
+  this->uid_ = "tempuid";
+  usc_file_path_ = mountpoint + "/usc";
   ApiC api_c;
-  if (test_dir_.empty() || !api_c.DirectoryExists(this->test_dir_)) {
-    std::cerr << "Directory does not exist. Please change " << this->test_dir_
-              << " field." << std::endl;
-    return -1;
+  if (!api_c.RegularFileExists(usc_file_path_)) {
+    SetUSC(0);
   }
+}
 
-  test_dir_ += SEPARATOR + "pmdk_tests" + SEPARATOR;
-  if (!api_c.DirectoryExists(test_dir_) &&
-      api_c.CreateDirectoryT(test_dir_) != 0) {
-    return -1;
-  }
+int DimmDevice::GetUSC() const {
+  int usc;
+  std::fstream usc_tempfile(usc_file_path_, std::ios_base::in);
+  usc_tempfile >> usc;
+  usc_tempfile.close();
+  return usc;
+}
 
-  return 0;
+void DimmDevice::SetUSC(int usc) {
+  std::ofstream usc_tempfile;
+  usc_tempfile.open(usc_file_path_, std::fstream::out);
+  usc_tempfile << usc;
+  usc_tempfile.close();
+}
+
+std::string DimmDevice::GetUID() {
+  return uid_;
+}
+
+std::string DimmDevice::GetMountpoint() const {
+  return mountpoint_;
 }

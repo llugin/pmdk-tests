@@ -28,8 +28,19 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-include(${CMAKE_CURRENT_LIST_DIR}/pmempools/CMakeLists.txt)
-include(${CMAKE_CURRENT_LIST_DIR}/pmemobj/CMakeLists.txt)
-if(NOT WIN32)
-	include(${CMAKE_CURRENT_LIST_DIR}/RAS/CMakeLists.txt)
-endif()
+# USC_REMOTE_INJECTER
+set(DIR ${CMAKE_CURRENT_LIST_DIR})
+set(PREFIX_FILTER "")
+
+file(GLOB_RECURSE us_remote_injecter_SRC
+	"${DIR}/*.h"
+	"${DIR}/*.cc")
+
+add_executable(US_REMOTE_INJECTER
+	${us_remote_injecter_SRC})
+
+set_source_groups("${PREFIX_FILTER}" ${us_remote_injecter_SRC})
+include_directories(src/tests/RAS/ras_utils)
+
+target_link_libraries(US_REMOTE_INJECTER RasUtils Utils)
+add_dependencies(US_REMOTE_INJECTER RasUtils Utils)

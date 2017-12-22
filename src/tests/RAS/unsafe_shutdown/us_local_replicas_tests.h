@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Intel Corporation
+ * Copyright 2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,30 +30,35 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "local_configuration.h"
+#ifndef US_LOCAL_REPLICAS_TESTS_H
+#define US_LOCAL_REPLICAS_TESTS_H
 
-int LocalConfiguration::FillConfigFields(pugi::xml_node &&root) {
-  root = root.child("localConfiguration");
+#include "unsafe_shutdown.h"
 
-  if (root.empty()) {
-    std::cerr << "Cannot find 'localConfiguration' node" << std::endl;
-    return -1;
-  }
+struct poolset_tc {
+  Poolset poolset;
+  std::vector<DimmDevice> us_dimms;
+  bool enough_dimms;
+  bool is_syncable;
+};
 
-  test_dir_ = root.child("testDir").text().get();
+class SyncLocalReplica : public UnsafeShutdown,
+                         public ::testing::WithParamInterface<poolset_tc> {
+ protected:
+  void SetUp() override;
+};
 
-  ApiC api_c;
-  if (test_dir_.empty() || !api_c.DirectoryExists(this->test_dir_)) {
-    std::cerr << "Directory does not exist. Please change " << this->test_dir_
-              << " field." << std::endl;
-    return -1;
-  }
+std::ostream& operator<<(std::ostream& stream, poolset_tc const& p);
 
-  test_dir_ += SEPARATOR + "pmdk_tests" + SEPARATOR;
-  if (!api_c.DirectoryExists(test_dir_) &&
-      api_c.CreateDirectoryT(test_dir_) != 0) {
-    return -1;
-  }
+std::vector<poolset_tc> GetPoolsetLocalReplicaParams();
 
-  return 0;
-}
+class UnsafeShutdownTransform : public UnsafeShutdown {
+ protected:
+  std::unique_ptr<Poolset> origin_;
+  std::unique_ptr<Poolset> added_;
+  std::unique_ptr<Poolset> final_;
+
+  void SetUp() override;
+};
+
+#endif  // US_LOCAL_REPLICAS_TESTS_H

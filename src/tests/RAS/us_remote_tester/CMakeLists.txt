@@ -28,8 +28,20 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-include(${CMAKE_CURRENT_LIST_DIR}/pmempools/CMakeLists.txt)
-include(${CMAKE_CURRENT_LIST_DIR}/pmemobj/CMakeLists.txt)
-if(NOT WIN32)
-	include(${CMAKE_CURRENT_LIST_DIR}/RAS/CMakeLists.txt)
-endif()
+# USC_REMOTE_TESTER
+set(DIR ${CMAKE_CURRENT_LIST_DIR})
+set(PREFIX_FILTER "")
+
+file(GLOB_RECURSE us_remote_tester_SRC
+	"${DIR}/*.h"
+	"${DIR}/*.cc")
+
+add_executable(US_REMOTE_TESTER
+	${us_remote_tester_SRC})
+
+set_source_groups("${PREFIX_FILTER}" ${us_remote_tester_SRC})
+include_directories(src/tests/RAS/ras_utils)
+
+target_link_libraries(US_REMOTE_TESTER RasUtils Utils libgtest ${Libpmemblk_LIBRARIES}
+${Libpmemlog_LIBRARIES} ${Libpmemobj_LIBRARIES} ${Libpmempool_LIBRARIES})
+add_dependencies(US_REMOTE_TESTER RasUtils Utils libgtest)

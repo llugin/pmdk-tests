@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Intel Corporation
+ * Copyright 2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,30 +30,50 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "local_configuration.h"
+#include <iostream>
+#include <vector>
+#include "dimm_device.h"
+#include "injecter.h"
 
-int LocalConfiguration::FillConfigFields(pugi::xml_node &&root) {
-  root = root.child("localConfiguration");
+void Reboot() {
+  std::cout << "rebooting" << std::endl;
+}
 
-  if (root.empty()) {
-    std::cerr << "Cannot find 'localConfiguration' node" << std::endl;
-    return -1;
+int main(int argc, char **argv) {
+  std::string usage =
+      "./US_INJECTER inject|confirm <MOUNTPOINT1> <MOUNTPOINT2> ...";
+
+  int ret = 0;
+  try {
+    if (argc < 3) {
+      std::cerr << usage << std::endl;
+      return 1;
+    }
+
+    std::vector<DimmDevice> dimms;
+
+    for (int i = 2; i < argc; ++i) {
+      dimms.push_back(DimmDevice{argv[i]});
+    }
+
+    Injecter injecter{dimms};
+
+    if (std::string{"inject"}.compare(argv[1]) == 0) {
+      injecter.InjectUS();
+      Reboot();
+      return 255;  // Connection error mock TODO remove
+    } else if (std::string{"confirm"}.compare(argv[1]) == 0) {
+      bool rebooted_with_us = injecter.ConfirmRebootedWithUS();
+      ret = rebooted_with_us ? 0 : 1;
+    } else {
+      std::cerr << usage << std::endl;
+      ret = 1;
+    }
+
+  } catch (const std::exception &e) {
+    std::cerr << "Exception was caught: " << e.what() << std::endl;
+    ret = 1;
   }
 
-  test_dir_ = root.child("testDir").text().get();
-
-  ApiC api_c;
-  if (test_dir_.empty() || !api_c.DirectoryExists(this->test_dir_)) {
-    std::cerr << "Directory does not exist. Please change " << this->test_dir_
-              << " field." << std::endl;
-    return -1;
-  }
-
-  test_dir_ += SEPARATOR + "pmdk_tests" + SEPARATOR;
-  if (!api_c.DirectoryExists(test_dir_) &&
-      api_c.CreateDirectoryT(test_dir_) != 0) {
-    return -1;
-  }
-
-  return 0;
+  return ret;
 }

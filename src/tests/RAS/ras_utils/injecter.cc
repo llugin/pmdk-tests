@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Intel Corporation
+ * Copyright 2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,30 +30,56 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "local_configuration.h"
+#include "injecter.h"
 
-int LocalConfiguration::FillConfigFields(pugi::xml_node &&root) {
-  root = root.child("localConfiguration");
+Injecter::Injecter(std::vector<DimmDevice> dimm_devices)
+    : dimm_devices_(dimm_devices) {
+}
 
-  if (root.empty()) {
-    std::cerr << "Cannot find 'localConfiguration' node" << std::endl;
+void Injecter::InjectUS() {
+  for (auto &d : dimm_devices_) {
+    RecordUSC(d);
+    d.SetUSC(d.GetUSC() + 1);
+  }
+}
+
+bool Injecter::ConfirmRebootedWithUS() {
+  for (const auto &d : dimm_devices_) {
+    int recorded_usc = ReadRecordedUSC(d);
+    if (recorded_usc == -1) {
+      std::cerr << "Could not read USC in :" << d.GetMountpoint() << std::endl;
+      return false;
+    }
+
+    if (d.GetUSC() != recorded_usc + 1) {
+      std::cerr << "Dimm " << d.GetMountpoint()
+                << " was not unsafely shutdown. USC read from Dimm: "
+                << d.GetUSC() << " USC expected: " << recorded_usc + 1
+                << std::endl;
+      return false;
+    }
+  }
+  return true;
+}
+
+void Injecter::RecordUSC(DimmDevice dimm) {
+  std::ofstream usc_file;
+  usc_file.open(dimm.GetMountpoint() + SEPARATOR + dimm.GetUID(),
+                std::fstream::out);
+  usc_file << dimm.GetUSC();
+  usc_file.close();
+}
+
+int Injecter::ReadRecordedUSC(DimmDevice dimm) {
+  std::string usc_file_path = dimm.GetMountpoint() + SEPARATOR + dimm.GetUID();
+  if (!api_c_.RegularFileExists(usc_file_path)) {
+    std::cerr << "File: " << usc_file_path << " does not exist" << std::endl;
     return -1;
   }
 
-  test_dir_ = root.child("testDir").text().get();
-
-  ApiC api_c;
-  if (test_dir_.empty() || !api_c.DirectoryExists(this->test_dir_)) {
-    std::cerr << "Directory does not exist. Please change " << this->test_dir_
-              << " field." << std::endl;
-    return -1;
-  }
-
-  test_dir_ += SEPARATOR + "pmdk_tests" + SEPARATOR;
-  if (!api_c.DirectoryExists(test_dir_) &&
-      api_c.CreateDirectoryT(test_dir_) != 0) {
-    return -1;
-  }
-
-  return 0;
+  int usc;
+  std::fstream usc_file(usc_file_path, std::ios_base::in);
+  usc_file >> usc;
+  usc_file.close();
+  return usc;
 }

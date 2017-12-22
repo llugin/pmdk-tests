@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Intel Corporation
+ * Copyright 2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,30 +30,44 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "local_configuration.h"
+#include <algorithm>
+#include <exception>
+#include <iostream>
+#include <memory>
+#include "api_c/api_c.h"
+#include "configXML/local_configuration.h"
+#include "gtest/gtest.h"
 
-int LocalConfiguration::FillConfigFields(pugi::xml_node &&root) {
-  root = root.child("localConfiguration");
+std::unique_ptr<LocalConfiguration> local_config{new LocalConfiguration()};
 
-  if (root.empty()) {
-    std::cerr << "Cannot find 'localConfiguration' node" << std::endl;
+std::string filter;
+std::string address;
+std::string rpmem_env;
+
+int main(int argc, char **argv) {
+  try {
+    if (local_config->ReadConfigFile() != 0) {
+      return -1;
+    }
+    ::testing::InitGoogleTest(&argc, argv);
+
+    if (argc <= 1) {
+      std::cerr << "$ US_REMOTE_TESTER <address> [filter]" << std::endl;
+      return -1;
+    }
+    address = argv[1];
+    if (address.compare("localhost") == 0) {
+      rpmem_env = "RPMEM_ENABLE_SOCKETS=1 RPMEM_ENABLE_VERBS=0 ";
+    }
+
+    if (argc > 2) {
+      filter = argv[2];
+    }
+
+    return RUN_ALL_TESTS();
+
+  } catch (const std::exception &e) {
+    std::cerr << "Exception was caught: " << e.what() << std::endl;
     return -1;
   }
-
-  test_dir_ = root.child("testDir").text().get();
-
-  ApiC api_c;
-  if (test_dir_.empty() || !api_c.DirectoryExists(this->test_dir_)) {
-    std::cerr << "Directory does not exist. Please change " << this->test_dir_
-              << " field." << std::endl;
-    return -1;
-  }
-
-  test_dir_ += SEPARATOR + "pmdk_tests" + SEPARATOR;
-  if (!api_c.DirectoryExists(test_dir_) &&
-      api_c.CreateDirectoryT(test_dir_) != 0) {
-    return -1;
-  }
-
-  return 0;
 }

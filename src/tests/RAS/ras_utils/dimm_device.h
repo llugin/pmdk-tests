@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Intel Corporation
+ * Copyright 2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,30 +30,26 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "local_configuration.h"
+#ifndef DIMM_DEVICE_H
+#define DIMM_DEVICE_H
 
-int LocalConfiguration::FillConfigFields(pugi::xml_node &&root) {
-  root = root.child("localConfiguration");
+#include <stdio.h>
+#include <fstream>
+#include <string>
+#include "api_c/api_c.h"
 
-  if (root.empty()) {
-    std::cerr << "Cannot find 'localConfiguration' node" << std::endl;
-    return -1;
-  }
+class DimmDevice {
+ public:
+  DimmDevice(std::string mountpoint);
+  int GetUSC() const;
+  void SetUSC(int usc);
+  std::string GetUID();
+  std::string GetMountpoint() const;
 
-  test_dir_ = root.child("testDir").text().get();
+ private:
+  std::string usc_file_path_;
+  std::string mountpoint_;
+  std::string uid_;
+};
 
-  ApiC api_c;
-  if (test_dir_.empty() || !api_c.DirectoryExists(this->test_dir_)) {
-    std::cerr << "Directory does not exist. Please change " << this->test_dir_
-              << " field." << std::endl;
-    return -1;
-  }
-
-  test_dir_ += SEPARATOR + "pmdk_tests" + SEPARATOR;
-  if (!api_c.DirectoryExists(test_dir_) &&
-      api_c.CreateDirectoryT(test_dir_) != 0) {
-    return -1;
-  }
-
-  return 0;
-}
+#endif  // DIMM_DEVICE_H

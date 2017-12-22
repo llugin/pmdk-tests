@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Intel Corporation
+ * Copyright 2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,30 +30,26 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "local_configuration.h"
+#ifndef USC_REMOTE_INJECTER_H
+#define USC_REMOTE_INJECTER_H
 
-int LocalConfiguration::FillConfigFields(pugi::xml_node &&root) {
-  root = root.child("localConfiguration");
+#include <iostream>
+#include <vector>
+#include "api_c/api_c.h"
+#include "constants.h"
+#include "dimm_device.h"
 
-  if (root.empty()) {
-    std::cerr << "Cannot find 'localConfiguration' node" << std::endl;
-    return -1;
-  }
+class Injecter {
+ public:
+  Injecter(std::vector<DimmDevice> dimm_devices);
+  void InjectUS();
+  bool ConfirmRebootedWithUS();
 
-  test_dir_ = root.child("testDir").text().get();
+ private:
+  std::vector<DimmDevice> dimm_devices_;
+  ApiC api_c_;
+  void RecordUSC(DimmDevice dimm);
+  int ReadRecordedUSC(DimmDevice dimm);
+};
 
-  ApiC api_c;
-  if (test_dir_.empty() || !api_c.DirectoryExists(this->test_dir_)) {
-    std::cerr << "Directory does not exist. Please change " << this->test_dir_
-              << " field." << std::endl;
-    return -1;
-  }
-
-  test_dir_ += SEPARATOR + "pmdk_tests" + SEPARATOR;
-  if (!api_c.DirectoryExists(test_dir_) &&
-      api_c.CreateDirectoryT(test_dir_) != 0) {
-    return -1;
-  }
-
-  return 0;
-}
+#endif /* USC_REMOTE_INJECTER_H */

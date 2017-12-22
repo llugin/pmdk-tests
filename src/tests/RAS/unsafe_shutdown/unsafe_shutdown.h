@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, Intel Corporation
+ * Copyright 2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,30 +30,54 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "local_configuration.h"
+#ifndef UNSAFE_SHUTDOWN_H
+#define UNSAFE_SHUTDOWN_H
 
-int LocalConfiguration::FillConfigFields(pugi::xml_node &&root) {
-  root = root.child("localConfiguration");
+#include <libpmem.h>
+#include <libpmemobj.h>
+#include <algorithm>
+#include <array>
+#include <fstream>
+#include <memory>
+#include <regex>
+#include <tuple>
+#include <utility>
+#include <vector>
+#include "api_c/api_c.h"
+#include "configXML/local_configuration.h"
+#include "dimm_device.h"
+#include "gtest/gtest.h"
+#include "injecter.h"
+#include "injecter.h"
+#include "pool_data/pool_data.h"
+#include "poolset/poolset.h"
+#include "poolset/poolset_management.h"
+#include "shell/i_shell.h"
+#include "ssh_runner.h"
 
-  if (root.empty()) {
-    std::cerr << "Cannot find 'localConfiguration' node" << std::endl;
-    return -1;
-  }
+extern std::unique_ptr<LocalConfiguration> local_config;
+extern std::vector<DimmDevice> us_dimms;
+extern std::vector<DimmDevice> non_us_dimms;
+extern std::vector<DimmDevice> remote_us_dimms;
+extern std::vector<DimmDevice> remote_non_us_dimms;
 
-  test_dir_ = root.child("testDir").text().get();
+class UnsafeShutdown : public ::testing::Test {
+ public:
+  bool PassedOnPreviousPhase();
 
-  ApiC api_c;
-  if (test_dir_.empty() || !api_c.DirectoryExists(this->test_dir_)) {
-    std::cerr << "Directory does not exist. Please change " << this->test_dir_
-              << " field." << std::endl;
-    return -1;
-  }
+  std::string GetNormalizedTestName();
+  Output<char> CreateRemotePoolsetFile(Poolset& poolset, std::string host);
+  void Repair(std::string pool_file_path);
 
-  test_dir_ += SEPARATOR + "pmdk_tests" + SEPARATOR;
-  if (!api_c.DirectoryExists(test_dir_) &&
-      api_c.CreateDirectoryT(test_dir_) != 0) {
-    return -1;
-  }
+  std::vector<int> test_data_ = {-2, 0, 12345, 1412, 1231, 23, 432, 34, 3};
+  IShell shell_;
+  std::unique_ptr<Injecter> injecter_;
 
-  return 0;
-}
+  ~UnsafeShutdown();
+
+ private:
+  const ::testing::TestInfo& GetTestInfo();
+  void StampPassedResult();
+};
+
+#endif  // UNSAFE_SHUTDOWN_H
