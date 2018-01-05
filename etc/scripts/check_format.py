@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright 2017, Intel Corporation
+# Copyright 2018, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 
 
 import sys
+import re
 import argparse
 from os import linesep, walk, path
 from difflib import unified_diff
@@ -41,7 +42,7 @@ from subprocess import check_output, STDOUT, CalledProcessError
 DOXY_START = '/**'
 DOXY_END = '*/'
 DOXY_EXTENSIONS = ('.cc',)
-LICENCE_EXTENSIONS = ('.cc', '.cpp', '.h', '.sh',
+LICENSE_EXTENSIONS = ('.cc', '.cpp', '.h', '.sh',
                       '.py', '.tpp', '.txt', '.cmake')
 CPP_EXTENSIONS = ('.c', '.cc', '.cpp', '.h', '.tpp')
 
@@ -51,47 +52,81 @@ CLANG_STYLE_ARGS = ['BasedOnStyle: Google',
                'AllowShortCaseLabelsOnASingleLine: false']
 CLANG_STYLE = '"{' + ', '.join(CLANG_STYLE_ARGS) + '}"'
 
+COPYRIGHT_HEADER_PATTERN = r'^(.*)Copyright (.*), Intel Corporation'
+
+errors_log = []
 missing_licence_files = []
 clang_format_bin = ''
 
 
-def check_license_date(file):
+def check_file(filepath, lines):
+    checking_results = []
+    if has_extension(filepath, LICENSE_EXTENSIONS):
+        checking_results.append(check_license_date(filepath, lines))
+    return all(checking_results)
+
+
+def get_license_boundary_lines(lines, license_filepath):
+    license_lines = read_file_lines(license_filepath)
+    get_first_license_line(license_lines)
+
+
+
+
+    return None, None
+
+
+
+def check_license()
+
+def format_license()
+
+
+def check_license_date(filepath, lines):
     '''Checks if year on license header contains year of last file \
      modification in repository.'''
-    cmd = 'git log -1 --format="%ad" --date=format:"%Y" {}'.format(file)
+    cmd = 'git log -1 --format="%ad" --date=format:"%Y" {}'.format(filepath)
     returncode, out = run(cmd)
     if returncode != 0:
-        sys.exit('git command {} exited with {}.'.format(cmd, returncode))
+        print(out)
+        sys.exit('git command {} exited with {}.'.
+                 format(cmd, returncode))
+    last_modification_year = out.decode('utf-8').strip()
 
-    year = out.decode('utf-8').strip()
-    print(year)
+    copyright_header_pattern = r'^(.*)Copyright (.*), Intel Corporation'
+    match = re.search(copyright_header_pattern, ''.join(lines))
+
+    ok = True
+    if match and not last_modification_year in match:
+        errors_log.append('{}: incorrect license year'.format(filepath))
+        ok = False
+    elif not match:
+        ok = False
+    return ok
 
 
-def format_file(file):
-    '''Format file.'''
-    with open(file, 'r', encoding='utf-8', newline=linesep) as f:
-        lines = f.readlines()
-        formatted = lines[:]
+def get_formatted_lines(filepath, lines, license_file):
+    formatted = lines[:]
 
-    if has_extension(file, CPP_EXTENSIONS):
-        formatted = clang_format(file)
-    if has_extension(file, DOXY_EXTENSIONS):
+    if has_extension(filepath, CPP_EXTENSIONS):
+        formatted = clang_format(filepath)
+    if has_extension(filepath, DOXY_EXTENSIONS):
         formatted = format_doxy(formatted)
-    if has_extension(file, LICENCE_EXTENSIONS):
-        formatted = format_licence(formatted, file)
+    if has_extension(filepath, LICENSE_EXTENSIONS):
+        formatted = format_licence(filepath, formatted, license_file)
 
-    return lines, formatted
+    return formatted
 
 
-def write_to_file(file, formatted):
+def read_file_lines(filepath):
+    with open(filepath, 'r', encoding='utf-8', newline=linesep) as f:
+        return f.readlines()
+
+
+def write_to_file(filepath, formatted):
     '''Write formatted lines to file.'''
-    with open(file, 'w', encoding='utf-8') as f:
+    with open(filepath, 'w', encoding='utf-8') as f:
         f.write(''.join([line.replace('\r\n', '\n') for line in formatted]))
-
-
-def has_extension(file, extensions):
-    '''Check if files extension is in given extensions.'''
-    return any(file.endswith(ext) for ext in extensions)
 
 
 def format_doxy(lines):
@@ -114,24 +149,24 @@ def get_doxy_line_indices(lines):
             and ('TEST_F' in lines[i + 1] or 'TEST_P' in lines[i + 1])
 
     start_found = False
-    indices = []
-    region_indices = []
+    all_doxy_indices = []
+    local_doxy_indices = []
     for i in iterations:
         if lines[i].strip() == DOXY_START:
-            region_indices = [i]
+            local_doxy_indices = [i]
             start_found = True
             continue
         if start_found and end_found(i):
-            indices.extend(region_indices + [i])
-            region_indices = []
+            all_doxy_indices.extend(local_doxy_indices + [i])
+            local_doxy_indices = []
             start_found = False
             continue
         if start_found and lines[i].strip().startswith('*'):
-            region_indices.append(i)
+            local_doxy_indices.append(i)
         else:
             start_found = False
 
-    return indices
+    return all_doxy_indices
 
 
 def format_doxy_line(line):
@@ -151,11 +186,12 @@ def format_doxy_line(line):
     return line
 
 
-def format_licence(lines, filename):
+def format_licence(filepath, lines, license_file):
     '''Format license.'''
     shebang = '#!'
     comments = ['/*', ' *', '#', ' */']
-    if has_extension(filename, CPP_EXTENSIONS):
+
+    if has_extension(filepath, CPP_EXTENSIONS):
         comments.remove('#')
 
     def get_comment_in(line):
@@ -176,7 +212,7 @@ def format_licence(lines, filename):
                 line.split(used_comment.strip(), 1)[1]
 
     if not licence_found:
-        missing_licence_files.append(filename)
+        missing_licence_files.append(filepath)
 
     return formatted
 
@@ -184,15 +220,6 @@ def format_licence(lines, filename):
 def check_prerequisites():
     if not find_clang_format():
         sys.exit('No clang-format in version 3.9 found.')
-
-
-def run(cmd, shell=False):
-    try:
-        out = check_output(cmd, shell=shell, stderr=STDOUT)
-    except CalledProcessError as e:
-        return e.returncode, e.output
-    else:
-        return 0, out
 
 
 def find_clang_format():
@@ -207,31 +234,26 @@ def find_clang_format():
     if returncode == 0:
         clang_format_bin = 'clang-format-3.9'
         return True
-
     return False
 
 
-def clang_format(file):
-    cmd = clang_format_bin + ' ' + file + ' -style={}'.format(CLANG_STYLE)
+def clang_format(filepath):
+    cmd = clang_format_bin + ' ' + filepath + ' -style={}'.format(CLANG_STYLE)
     returncode, out = run(cmd, shell=True)
     return out.decode('utf-8').splitlines(keepends=True)
 
 
-def get_files_to_format(root_dir, ignored):
-    def is_ignored(file):
-        if any(ignored == directory for directory in
-               PurePath(path.relpath(path.abspath(file), root_dir)).parts[:-1]):
-            return True
-        return False
+def check_diff(filepath, lines, formatted):
+    diff = list(unified_diff(lines, formatted))
+    if diff:
+        if not args.quiet:
+            print('{} diff:'.format(filepath))
+            sys.stdout.writelines(diff)
+            print()
+        if args.in_place:
+            write_to_file(filepath, formatted)
 
-    to_format = []
-    checked_extensions = DOXY_EXTENSIONS + LICENCE_EXTENSIONS + CPP_EXTENSIONS
-    for root, _, files in walk(root_dir):
-        to_format.extend(path.join(root, file) for file in files if has_extension(
-            file, checked_extensions) and not is_ignored(path.join(root, file)))
-
-    return to_format
-
+    return bool(diff)
 
 if __name__ == '__main__':
     class CheckPrerequisitesAction(argparse.Action):
@@ -255,6 +277,9 @@ if __name__ == '__main__':
     parser.add_argument('--ignore-dir', default='build',
                         help='In recursive mode ignore elements under '
                              'directory with given name. Default: build')
+    default_license_path = path.abspath(path.join(path.dirname(__file__), '..', '..', 'LICENSE'))
+    parser.add_argument('-l,', '--license', default=default_license_path,
+                        help='Path to LICENSE file')
     parser.add_argument('--check-prerequisites',  nargs=0,
                         help='Check prerequisites only.',
                         action=CheckPrerequisitesAction)
@@ -264,34 +289,30 @@ if __name__ == '__main__':
     args = parser.parse_args()
     check_prerequisites()
 
-    diffs_after_formatting = False
-    files_to_format = []
-
+    files_to_process = []
     if args.recursive:
         if not path.isdir(args.path):
             sys.exit('{} is not a directory'.format(path.abspath(args.path)))
-        files_to_format = get_files_to_format(args.path, args.ignore_dir)
+        files_to_process = get_files_to_process(args.path, args.ignore_dir)
     else:
         if not path.isfile(args.path):
             sys.exit('{} is not a regular file'.format(path.abspath(args.path)))
-        files_to_format.append(args.path)
+        files_to_process.append(args.path)
 
-    for file in files_to_format:
-        original, formatted = format_file(file)
-        diff = list(unified_diff(original, formatted))
-        if diff:
-            diffs_after_formatting = True
-            if not args.quiet:
-                print('{} diff:'.format(file))
-                sys.stdout.writelines(diff)
-                print()
+    diffs_after_formatting = False
+    for filepath in files_to_process:
+        lines = read_file_lines(filepath)
+        check_file(filepath, lines)
+        formatted = get_formatted_lines(filepath, lines, args.license)
+        diff_occurs = check_diff(filepath, lines, formatted)
+        if diff_occurs:
+            diff_after_formatting = True
             if args.in_place:
-                write_to_file(file, formatted)
+                write_to_file(filepath, formatted)
 
-    if missing_licence_files:
-        print('No licences found in:')
-        for file in missing_licence_files:
-            print(file)
+    if errors_log:
+        for line in errors_log:
+            print(line)
 
-    if not args.in_place and (diffs_after_formatting or missing_licence_files):
+    if not args.in_place and (diffs_after_formatting or errors_log):
         sys.exit(1)
