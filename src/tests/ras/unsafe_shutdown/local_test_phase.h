@@ -29,6 +29,37 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef LOCAL_TEST_PHASE_H
+#define LOCAL_TEST_PHASE_H
 
-int main() {
-}
+#include "exit_codes.h"
+#include "test_phase/test_phase.h"
+
+class LocalTestPhase : public TestPhase<LocalTestPhase> {
+  friend class TestPhase<LocalTestPhase>;
+
+ public:
+  const std::vector<DimmCollection> &GetSafeDimmNamespaces() {
+    return this->safe_dimm_colls_;
+  }
+  const std::vector<DimmCollection> &GetUnsafeDimmNamespaces() {
+    return this->unsafe_dimm_colls_;
+  }
+
+  const std::string &GetTestDir() {
+    return this->local_dimm_config_.GetTestDir();
+  }
+
+ protected:
+  int SetUp();
+  int Inject();
+  int CheckUSC();
+  int CleanUp();
+
+ private:
+  LocalDimmConfiguration local_dimm_config_;
+  std::vector<DimmCollection> safe_dimm_colls_;
+  std::vector<DimmCollection> unsafe_dimm_colls_;
+  LocalTestPhase();
+};
+#endif  // LOCAL_TEST_PHASE_H
