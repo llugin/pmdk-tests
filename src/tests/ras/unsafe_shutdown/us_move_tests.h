@@ -30,39 +30,64 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PMDK_TESTS_SRC_UTILS_CONFIGXML_LOCAL_DIMM_CONFIGURATION_H_
-#define PMDK_TESTS_SRC_UTILS_CONFIGXML_LOCAL_DIMM_CONFIGURATION_H_
+#ifndef US_MOVE_TESTS_H
+#define US_MOVE_TESTS_H
 
-#include "configXML/read_config.h"
-#include "dimm/dimm.h"
-#include "pugixml.hpp"
+#include "unsafe_shutdown.h"
 
-class LocalDimmConfiguration final : public ReadConfig<LocalDimmConfiguration> {
- private:
-  friend class ReadConfig<LocalDimmConfiguration>;
-  std::string test_dir_;
-  std::vector<DimmCollection> dimm_collections_;
-  int FillConfigFields(pugi::xml_node &&root);
-  int SetDimmCollections(pugi::xml_node &&node);
+struct param_with_us {
+  std::string description;
+  std::string src_pool_dir;
+  std::string dest_pool_dir;
+  std::vector<DimmCollection> us_dimms;
+  bool enough_dimms;
+};
+std::ostream& operator<<(std::ostream& stream, param_with_us const& m);
 
- public:
-  const std::string &GetTestDir() const {
-    return this->test_dir_;
-  }
-  DimmCollection &operator[](int idx) {
-    return dimm_collections_.at(idx);
-  }
-  int GetSize() const {
-    return dimm_collections_.size();
-  }
-
-  const std::vector<DimmCollection>::const_iterator begin() const noexcept {
-    return dimm_collections_.cbegin();
-  }
-
-  const std::vector<DimmCollection>::const_iterator end() const noexcept {
-    return dimm_collections_.cend();
-  }
+struct param_no_us {
+  std::string description;
+  std::string src_pool_dir;
+  std::string dest_pool_dir;
+  std::vector<DimmCollection> non_us_dimms;
+  bool enough_dimms;
 };
 
-#endif  // !PMDK_TESTS_SRC_UTILS_CONFIGXML_LOCAL_DIMM_CONFIGURATION_H_
+std::ostream& operator<<(std::ostream& stream, param_no_us const& m);
+class MoveDirtyPool : public UnsafeShutdown,
+                      public ::testing::WithParamInterface<param_with_us> {
+ public:
+  void SetUp() override;
+  std::string dest_pool_path_;
+  std::string src_pool_path_;
+};
+
+class MoveCleanPool : public UnsafeShutdown,
+                      public ::testing::WithParamInterface<param_with_us> {
+ public:
+  std::string dest_pool_path_;
+  std::string src_pool_path_;
+  void SetUp() override;
+};
+
+class MoveCleanPoolWithoutUS
+    : public UnsafeShutdown,
+      public ::testing::WithParamInterface<param_no_us> {
+ public:
+  std::string dest_pool_path_;
+  std::string src_pool_path_;
+  void SetUp() override;
+};
+
+class MoveDirtyPoolWithoutUS
+    : public UnsafeShutdown,
+      public ::testing::WithParamInterface<param_no_us> {
+ public:
+  std::string dest_pool_path_;
+  std::string src_pool_path_;
+  void SetUp() override;
+};
+
+std::vector<param_no_us> GetParamsNoUS();
+std::vector<param_with_us> GetParamsWithUS();
+
+#endif  // US_MOVE_TESTS_H

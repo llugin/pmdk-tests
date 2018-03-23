@@ -8,14 +8,19 @@ and `remoteConfiguration`, representing local and remote machines respectively.
 There can be more than one `remoteConfiguration`.
 
 ### localConfiguration structure ###
-* `testDir`: path to test execution directory
+* `testDir`: path to test execution directory. If `dimmConfiguration` fields are
+defined, it should represent a mountpoint of non-NVDIMM device.
 * `dimmConfiguration`: NVDIMM devices configuration section
     * `mountPoint`: path to mountpoint associated with single bus connected with
 one or more NVDIMMS
 
 ### remoteConfiguration structure ###
-* `testDir`: path to test execution directory on remote host
-* `address`: remote host address in format ```[<user>@]<hostname>[:<port>]``` with optional user and port number. Provided address needs to be sufficient to authenticate without further quering.
+* `testDir`: path to test execution directory on remote host. If
+`dimmConfiguration` fields are defined, it should represent a mountpoint of
+non-NVDIMM device.
+* `address`: remote host address in format ```[<user>@]<hostname>[:<port>]```
+with optional user and port number. Provided address needs to be sufficient to
+authenticate without further quering.
 * `binsDir`: path to directory with pmdk-tests binaries on remote host
 * `dimmConfiguration`: same as in
 [local configuration](#localConfiguration-structure)

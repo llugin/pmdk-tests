@@ -30,57 +30,27 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PMDK_TESTS_SRC_RAS_UTILS_DIMM_H_
-#define PMDK_TESTS_SRC_RAS_UTILS_DIMM_H_
+#ifndef US_REMOTE_TESTER_H
+#define US_REMOTE_TESTER_H
 
-#include <ndctl/libdaxctl.h>
-#include <ndctl/libndctl.h>
-#include <stdio.h>
-#include <sys/stat.h>
-#include <exception>
-#include <iostream>
-#include <string>
-#include <vector>
-#include "api_c/api_c.h"
+#include <future>
+#include "exit_codes.h"
+#include "gtest/gtest.h"
+#include "ras_configXML/ras_configuration.h"
 
-#define FOREACH_BUS_REGION_NAMESPACE(ctx, bus, region, ndns)    \
-  ndctl_bus_foreach(ctx, bus) ndctl_region_foreach(bus, region) \
-      ndctl_namespace_foreach(region, ndns)
+extern std::unique_ptr<std::string> filter;
+extern std::unique_ptr<RASConfigurationCollection> ras_config;
 
-class Dimm final {
- private:
-  struct ndctl_dimm *dimm_ = nullptr;
-  std::string uid_;
-
+class USRemoteTester : public ::testing::Test {
  public:
-  Dimm(struct ndctl_dimm *dimm, const char *uid) : dimm_(dimm), uid_(uid) {
-  }
-
-  int GetShutdownCount();
-  int InjectUnsafeShutdown();
-
-  const std::string &GetUid() const {
-    return this->uid_;
+  void SetUp() override;
+  void TearDown() override;
+  int PhaseExecute(const std::string& filter, const std::string& arg);
+  bool RunPowerCycle();
+  bool WaitForDutsConnection(unsigned int timeout);
+  bool AllTestsFailed(int exit_code) {
+    return (exit_code != 0 && exit_code != exit_codes::partially_passed);
   }
 };
 
-class DimmCollection final {
- private:
-  bool is_dax_ = false;
-  ndctl_ctx *ctx_ = nullptr;
-  std::string mountpoint_;
-  std::vector<Dimm> dimms_;
-
-  ndctl_interleave_set *GetInterleaveSet(ndctl_ctx *ctx, struct stat64 st);
-
- public:
-  DimmCollection(const std::string &mountpoint);
-
-  Dimm &operator[](std::size_t idx) {
-    return this->dimms_.at(idx);
-  }
-
-  ~DimmCollection();
-};
-
-#endif  // !PMDK_TESTS_SRC_RAS_UTILS_DIMM_H_
+#endif /* US_REMOTE_TESTER_H */
