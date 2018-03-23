@@ -30,57 +30,41 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PMDK_TESTS_SRC_RAS_UTILS_DIMM_H_
-#define PMDK_TESTS_SRC_RAS_UTILS_DIMM_H_
+#ifndef US_MOVE_TESTS_H
+#define US_MOVE_TESTS_H
 
-#include <ndctl/libdaxctl.h>
-#include <ndctl/libndctl.h>
-#include <stdio.h>
-#include <sys/stat.h>
-#include <exception>
-#include <iostream>
-#include <string>
-#include <vector>
-#include "api_c/api_c.h"
+#include "unsafe_shutdown.h"
 
-#define FOREACH_BUS_REGION_NAMESPACE(ctx, bus, region, ndns)    \
-  ndctl_bus_foreach(ctx, bus) ndctl_region_foreach(bus, region) \
-      ndctl_namespace_foreach(region, ndns)
+struct move_param {
+  std::string description;
+  std::string src_pool_dir;
+  std::string dest_pool_dir;
+  bool enough_dimms;
+};
+std::ostream& operator<<(std::ostream& stream, move_param const& m);
 
-class Dimm final {
- private:
-  struct ndctl_dimm *dimm_ = nullptr;
-  std::string uid_;
-
+class MovePoolDirty : public UnsafeShutdown,
+                      public ::testing::WithParamInterface<move_param> {
  public:
-  Dimm(struct ndctl_dimm *dimm, const char *uid) : dimm_(dimm), uid_(uid) {
-  }
+  std::string dest_pool_path_;
+  std::string src_pool_path_;
 
-  int GetShutdownCount();
-  int InjectUnsafeShutdown();
-
-  const std::string &GetUid() const {
-    return this->uid_;
-  }
+  void SetUp() override;
 };
 
-class DimmCollection final {
- private:
-  bool is_dax_ = false;
-  ndctl_ctx *ctx_ = nullptr;
-  std::string mountpoint_;
-  std::vector<Dimm> dimms_;
-
-  ndctl_interleave_set *GetInterleaveSet(ndctl_ctx *ctx, struct stat64 st);
-
+class MovePoolClean : public UnsafeShutdown,
+                      public ::testing::WithParamInterface<move_param> {
  public:
-  DimmCollection(const std::string &mountpoint);
-
-  Dimm &operator[](std::size_t idx) {
-    return this->dimms_.at(idx);
+  MovePoolClean() {
+    this->close_pools_at_end_ = true;
   }
 
-  ~DimmCollection();
+  std::string dest_pool_path_;
+  std::string src_pool_path_;
+
+  void SetUp() override;
 };
 
-#endif  // !PMDK_TESTS_SRC_RAS_UTILS_DIMM_H_
+std::vector<move_param> GetMoveParams();
+
+#endif  // US_MOVE_TESTS_H
