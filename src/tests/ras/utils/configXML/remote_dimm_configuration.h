@@ -35,7 +35,7 @@
 
 #include "api_c/api_c.h"
 #include "configXML/read_config.h"
-#include "dimm.h"
+#include "dimm/dimm.h"
 #include "pugixml.hpp"
 #include "shell/i_shell.h"
 

@@ -31,14 +31,20 @@
  */
 
 #include "configXML/local_dimm_configuration.h"
+#include "configXML/remote_dimm_configuration.h"
 #include "exit_codes.h"
 #include "gtest/gtest.h"
 #include "shell/i_shell.h"
 
 std::unique_ptr<LocalDimmConfiguration> local_dimm_config{
     new LocalDimmConfiguration()};
+std::unique_ptr<RemoteDimmConfigurationsCollection> remote_dimm_config{
+    new RemoteDimmConfigurationsCollection()};
 
 std::vector<DimmCollection> us_dimm_colls;
+std::vector<DimmCollection> non_us_dimm_colls;
+
+std::vector<DimmCollection> remote_us_dimm_colls;
 std::vector<DimmCollection> non_us_dimm_colls;
 
 bool PartiallyPassed() {
