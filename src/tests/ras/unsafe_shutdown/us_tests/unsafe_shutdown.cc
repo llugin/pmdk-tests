@@ -30,38 +30,46 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef US_REMOTE_REPLICAS_TESTS_H
-#define US_REMOTE_REPLICAS_TESTS_H
-
 #include "unsafe_shutdown.h"
 
-struct remote_poolset {
-  std::string host;
-  std::vector<DimmDevice> us_dimms;
-  Poolset poolset;
-  std::string GetSectionLine();
-};
+std::string UnsafeShutdown::GetNormalizedTestName() {
+  std::string full_test_name = gtest_utils::GetFullTestName();
+  string_utils::ReplaceAll(full_test_name, SEPARATOR, std::string{"_"});
+  std::vector<std::string> test_suffixes{"_before_us", "_after_first_us",
+                                         "_after_second_us"};
+  for (const auto &suffix : test_suffixes) {
+    string_utils::ReplaceAll(full_test_name, suffix, std::string{""});
+  }
+  return full_test_name;
+}
 
-struct remote_poolset_tc {
-  std::vector<remote_poolset> remote_poolsets;
-  Poolset poolset;
-  std::vector<DimmDevice> us_dimms;
-  bool enough_dimms;
-  bool is_syncable;
-};
+std::string UnsafeShutdown::GetPassedMarkerPath() {
+  return local_dimm_config->GetTestDir() + GetNormalizedTestName() + "_passed";
+}
 
-class SyncRemoteReplica
-    : public UnsafeShutdown,
-      public ::testing::WithParamInterface<remote_poolset_tc> {
- protected:
-  void SetUp() override;
-  void InjectRemote(remote_poolset rp);
-  void ConfirmInjectedRemote(remote_poolset rp);
-  std::string remote_bin_dir_;
-};
+void UnsafeShutdown::Repair(std::string pool_file_path) {
+  std::string cmd = "pmempool check -ry " + pool_file_path;
+  auto out = shell_.ExecuteCommand(cmd);
+  ASSERT_EQ(0, out.GetExitCode()) << cmd << std::endl << out.GetContent();
+}
 
-std::ostream& operator<<(std::ostream& stream, remote_poolset_tc const& p);
+bool UnsafeShutdown::PassedOnPreviousPhase() {
+  bool ret = ApiC::RegularFileExists(GetPassedMarkerPath());
+  if (ret) {
+    ApiC::RemoveFile(GetPassedMarkerPath());
+  }
+  return ret;
+}
 
-std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams();
+void UnsafeShutdown::CreatePassedMarker() {
+  if (gtest_utils::ThisTestPassed()) {
+    if (ApiC::CreateFileT(GetPassedMarkerPath(), "") == -1) {
+      throw std::invalid_argument("Could not create passed marker file: " +
+                                  GetPassedMarkerPath());
+    };
+  }
+}
 
-#endif  // US_REMOTE_REPLICAS_TESTS_H
+UnsafeShutdown::~UnsafeShutdown() {
+  CreatePassedMarker();
+}

@@ -30,27 +30,43 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef US_REMOTE_TESTER_H
-#define US_REMOTE_TESTER_H
+#ifndef US_REMOTE_REPLICAS_TESTS_H
+#define US_REMOTE_REPLICAS_TESTS_H
 
-#include <future>
-#include "exit_codes.h"
-#include "gtest/gtest.h"
-#include "ras_configXML/ras_configuration.h"
+#include "configXML/remote_dimm_configuration.h"
+#include "unsafe_shutdown.h"
 
-extern std::unique_ptr<std::string> filter;
-extern std::unique_ptr<RASConfigurationCollection> ras_config;
+extern std::unique_ptr<RemoteDimmNode> remote_dimm_config;
+extern std::vector<DimmCollection> remote_us_dimm_colls;
+extern std::vector<DimmCollection> remote_non_us_dimm_colls;
 
-class USRemoteTester : public ::testing::Test {
- public:
-  void SetUp() override;
-  void TearDown() override;
-  int PhaseExecute(const std::string& filter, const std::string& arg);
-  bool RunPowerCycle();
-  bool WaitForDutsConnection(unsigned int timeout);
-  bool AllTestsFailed(int exit_code) {
-    return (exit_code != 0 && exit_code != exit_codes::partially_passed);
-  }
+struct remote_poolset {
+  std::string host = remote_dimm_config->GetAddress();
+  std::vector<DimmCollection> us_dimm_colls;
+  Poolset poolset;
+  std::string GetReplicaLine();
 };
 
-#endif /* US_REMOTE_TESTER_H */
+struct remote_poolset_tc {
+  std::vector<remote_poolset> remote_poolsets;
+  Poolset poolset;
+  std::vector<DimmCollection> us_dimm_colls;
+  bool enough_dimms;
+  bool is_syncable;
+};
+
+class SyncRemoteReplica
+    : public UnsafeShutdown,
+      public ::testing::WithParamInterface<remote_poolset_tc> {
+ public:
+  std::string remote_bin_dir_;
+  void SetUp() override;
+  Output<char> CreateRemotePoolsetFile(Poolset& poolset, std::string host);
+  void CheckUnsafeShutdownRemote(const remote_poolset& rp);
+};
+
+std::ostream& operator<<(std::ostream& stream, remote_poolset_tc const& p);
+
+std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams();
+
+#endif  // US_REMOTE_REPLICAS_TESTS_H

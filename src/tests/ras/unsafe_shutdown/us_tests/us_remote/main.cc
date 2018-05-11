@@ -34,85 +34,43 @@
 #include "configXML/remote_dimm_configuration.h"
 #include "exit_codes.h"
 #include "gtest/gtest.h"
+#include "gtest_utils/gtest_utils.h"
+#include "inject_utils.h"
 #include "shell/i_shell.h"
 
 std::unique_ptr<LocalDimmConfiguration> local_dimm_config{
     new LocalDimmConfiguration()};
-std::unique_ptr<RemoteDimmConfigurationsCollection> remote_dimm_config{
-    new RemoteDimmConfigurationsCollection()};
+std::unique_ptr<RemoteDimmNode> remote_dimm_config;
 
-std::vector<DimmCollection> us_dimm_colls;
-std::vector<DimmCollection> non_us_dimm_colls;
-
+std::vector<DimmCollection> local_us_dimm_colls;
+std::vector<DimmCollection> local_non_us_dimm_colls;
 std::vector<DimmCollection> remote_us_dimm_colls;
-std::vector<DimmCollection> non_us_dimm_colls;
-
-bool PartiallyPassed() {
-  ::testing::UnitTest *ut = ::testing::UnitTest::GetInstance();
-  return ut->successful_test_count() > 0 && ut->failed_test_count() > 0;
-}
-
-bool NoTestsPassed() {
-  ::testing::UnitTest *ut = ::testing::UnitTest::GetInstance();
-  return ut->successful_test_count() == 0;
-}
-
-int RecordDimmUSC(Dimm dimm) {
-  int usc = dimm.GetShutdownCount();
-  if (usc == -1) {
-    std::cerr << "Reading USC from dimm " << dimm.GetUid() << " failed"
-              << std::endl;
-    return -1;
-  }
-
-  if (ApiC::CreateFileT(
-          local_dimm_config->GetTestDir() + SEPARATOR + dimm.GetUid(),
-          std::to_string(usc)) == -1) {
-    return -1;
-  }
-  return 0;
-}
-
-int RecordUSC() {
-  for (const auto &dc : us_dimm_colls) {
-    for (const auto &d : dc) {
-      if (RecordDimmUSC(d) != 0) {
-        return -1;
-      }
-    }
-  }
-  for (const auto &dc : non_us_dimm_colls) {
-    for (const auto &d : dc) {
-      if (RecordDimmUSC(d) != 0) {
-        return -1;
-      }
-    }
-  }
-  return 0;
-}
-
-int Inject() {
-  for (const auto &dc : us_dimm_colls) {
-    for (const auto &d : dc) {
-      if (d.InjectUnsafeShutdown() != 0) {
-        return -1;
-      }
-    }
-  }
-  return 0;
-}
+std::vector<DimmCollection> remote_non_us_dimm_colls;
 
 void InitializeDimms() {
   if (local_dimm_config->GetSize() > 0) {
-    us_dimm_colls.emplace_back(local_dimm_config.get()->operator[](0));
+    local_us_dimm_colls.emplace_back(local_dimm_config.get()->operator[](0));
   }
 
   if (local_dimm_config->GetSize() > 1) {
-    non_us_dimm_colls.emplace_back(local_dimm_config.get()->operator[](1));
+    local_non_us_dimm_colls.emplace_back(
+        local_dimm_config.get()->operator[](1));
   }
 
   for (int i = 2; i < local_dimm_config->GetSize(); ++i) {
-    us_dimm_colls.emplace_back(local_dimm_config.get()->operator[](i));
+    local_us_dimm_colls.emplace_back(local_dimm_config.get()->operator[](i));
+  }
+
+  if (remote_dimm_config->GetSize() > 0) {
+    remote_us_dimm_colls.emplace_back(remote_dimm_config.get()->operator[](0));
+  }
+  if (remote_dimm_config->GetSize() > 1) {
+    remote_non_us_dimm_colls.emplace_back(
+        remote_dimm_config.get()->operator[](1));
+  }
+
+  for (int i = 2; i < remote_dimm_config->GetSize(); ++i) {
+    remote_us_dimm_colls.emplace_back(remote_dimm_config.get()->operator[](i));
   }
 }
 
@@ -126,12 +84,35 @@ void CleanUp() {
   }
 }
 
+int InjectRemote() {
+  std::string remote_injecter_path =
+      remote_dimm_config->GetBinsDir() + SEPARATOR + "INJECTER-CLI";
+  std::string mountpoints_arg;
+  for (auto &us_coll : remote_us_dimm_colls) {
+    mountpoints_arg += us_coll.GetMountpoint() + " ";
+  }
+  IShell shell{remote_dimm_config->GetAddress()};
+  std::string cmd = remote_injecter_path + " inject " + mountpoints_arg;
+
+  auto out = shell.ExecuteCommand(cmd);
+  if (out.GetExitCode() != 0) {
+    std::cerr << out.GetContent() << std::endl;
+    return 1;
+  }
+  return 0;
+}
+
 int main(int argc, char **argv) {
   int ret = 0;
   try {
     if (local_dimm_config->ReadConfigFile() != 0) {
       return 1;
     }
+    RemoteDimmConfigurationsCollection remote_dimm_configs;
+    if (remote_dimm_configs.ReadConfigFile() != 0) {
+      return 1;
+    }
+    remote_dimm_config.reset(&remote_dimm_configs[0]);
 
     for (const auto &dimm_collection : *local_dimm_config) {
       ApiC::CreateDirectoryT(dimm_collection.GetMountpoint());
@@ -148,15 +129,20 @@ int main(int argc, char **argv) {
 
     ret = RUN_ALL_TESTS();
 
-    if (PartiallyPassed()) {
+    if (gtest_utils::PartiallyPassed()) {
       ret = exit_codes::partially_passed;
     }
 
-    if (RecordUSC() != 0) {
+    InjectManager inject_manager{local_dimm_config->GetTestDir()};
+
+    if (inject_manager.RecordUSCAll(local_dimm_config->GetDimmCollections()) !=
+        0) {
       return exit_codes::dimm_operation_failed;
     }
+
     if (std::find(args.begin(), args.end(), "inject") != args.end() &&
-        Inject() != 0) {
+        inject_manager.InjectAll(local_us_dimm_colls) != 0 &&
+        InjectRemote() != 0) {
       return exit_codes::dimm_operation_failed;
     }
   } catch (const std::exception &e) {

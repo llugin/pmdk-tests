@@ -30,42 +30,48 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PMDK_TESTS_SRC_UTILS_CONFIGXML_LOCAL_DIMM_CONFIGURATION_H_
-#define PMDK_TESTS_SRC_UTILS_CONFIGXML_LOCAL_DIMM_CONFIGURATION_H_
-
-#include "configXML/read_config.h"
 #include "dimm/dimm.h"
-#include "pugixml.hpp"
+#include "inject_utils.h"
 
-class LocalDimmConfiguration final : public ReadConfig<LocalDimmConfiguration> {
- private:
-  friend class ReadConfig<LocalDimmConfiguration>;
-  std::string test_dir_;
-  std::vector<DimmCollection> dimm_collections_;
-  int FillConfigFields(pugi::xml_node &&root);
-  int SetDimmCollections(pugi::xml_node &&node);
+int main(int argc, char **argv) {
+  std::string usage =
+      "./INJECTER inject|check-safe|check-unsafe <MOUNTPOINT1> "
+      "<MOUNTPOINT2> ...";
 
- public:
-  const std::string &GetTestDir() const {
-    return this->test_dir_;
-  }
-  const std::vector<DimmCollection> &GetDimmCollections() {
-    return this->dimm_collections_;
-  }
-  DimmCollection &operator[](int idx) {
-    return dimm_collections_.at(idx);
-  }
-  int GetSize() const {
-    return dimm_collections_.size();
+  int ret = 0;
+  try { 
+    if (argc < 3) {
+      std::cerr << usage << std::endl;
+      return 1;
+    }
+
+    std::vector<DimmCollection> dimm_colls;
+
+    for (int i = 2; i < argc; ++i) {
+      dimm_colls.emplace_back(DimmCollection{argv[i]});
+    }
+
+    InjectManager inject_mgmt{argv[2]};
+    if (inject_mgmt.InjectAll(dimm_colls)) {
+      return 1;
+    }
+    if (std::string{"inject"}.compare(argv[1]) == 0) {
+      if (inject_mgmt.RecordUSCAll(dimm_colls)) {
+        return 1;
+      }
+    } else if (std::string{"check-safe"}.compare(argv[1]) == 0) {
+      ret = inject_mgmt.IsUSCIncreasedBy(0, dimm_colls) ? 0 : 1;
+    } else if (std::string{"check-unsafe"}.compare(argv[1]) == 0) {
+      ret = inject_mgmt.IsUSCIncreasedBy(1, dimm_colls) ? 0 : 1;
+    } else {
+      std::cerr << usage << std::endl;
+      ret = 1;
+    }
+
+  } catch (const std::exception &e) {
+    std::cerr << "Exception was caught: " << e.what() << std::endl;
+    ret = 1;
   }
 
-  const std::vector<DimmCollection>::const_iterator begin() const noexcept {
-    return dimm_collections_.cbegin();
-  }
-
-  const std::vector<DimmCollection>::const_iterator end() const noexcept {
-    return dimm_collections_.cend();
-  }
-};
-
-#endif  // !PMDK_TESTS_SRC_UTILS_CONFIGXML_LOCAL_DIMM_CONFIGURATION_H_
+  return ret;
+}

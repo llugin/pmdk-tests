@@ -30,42 +30,21 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PMDK_TESTS_SRC_UTILS_CONFIGXML_LOCAL_DIMM_CONFIGURATION_H_
-#define PMDK_TESTS_SRC_UTILS_CONFIGXML_LOCAL_DIMM_CONFIGURATION_H_
+#ifndef PMDK_TESTS_SRC_UTILS_GTEST_UTILS_H_
+#define PMDK_TESTS_SRC_UTILS_GTEST_UTILS_H_
 
-#include "configXML/read_config.h"
-#include "dimm/dimm.h"
-#include "pugixml.hpp"
+#include "api_c/api_c.h"
+#include "gtest/gtest.h"
+#include "string_utils.h"
 
-class LocalDimmConfiguration final : public ReadConfig<LocalDimmConfiguration> {
- private:
-  friend class ReadConfig<LocalDimmConfiguration>;
-  std::string test_dir_;
-  std::vector<DimmCollection> dimm_collections_;
-  int FillConfigFields(pugi::xml_node &&root);
-  int SetDimmCollections(pugi::xml_node &&node);
+namespace gtest_utils {
 
- public:
-  const std::string &GetTestDir() const {
-    return this->test_dir_;
-  }
-  const std::vector<DimmCollection> &GetDimmCollections() {
-    return this->dimm_collections_;
-  }
-  DimmCollection &operator[](int idx) {
-    return dimm_collections_.at(idx);
-  }
-  int GetSize() const {
-    return dimm_collections_.size();
-  }
+bool ThisTestPassed();
+std::string GetFullTestName();
 
-  const std::vector<DimmCollection>::const_iterator begin() const noexcept {
-    return dimm_collections_.cbegin();
-  }
+bool PartiallyPassed();
 
-  const std::vector<DimmCollection>::const_iterator end() const noexcept {
-    return dimm_collections_.cend();
-  }
-};
+bool NoTestsPassed();
+}
 
-#endif  // !PMDK_TESTS_SRC_UTILS_CONFIGXML_LOCAL_DIMM_CONFIGURATION_H_
+#endif  // PMDK_TESTS_SRC_UTILS_GTEST_UTILS_H_

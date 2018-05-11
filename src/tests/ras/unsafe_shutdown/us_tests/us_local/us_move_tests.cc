@@ -49,11 +49,11 @@ std::vector<param_with_us> GetParamsWithUS() {
   {
     param_with_us tc;
     tc.description = "from US dimm to non-dimm";
-    if (us_dimm_colls.size() >= 1) {
+    if (local_us_dimm_colls.size() >= 1) {
       tc.enough_dimms = true;
-      tc.src_pool_dir = us_dimm_colls[0].GetMountpoint() + SEPARATOR;
+      tc.src_pool_dir = local_us_dimm_colls[0].GetMountpoint() + SEPARATOR;
       tc.dest_pool_dir = local_dimm_config->GetTestDir() + SEPARATOR;
-      tc.us_dimms.emplace_back(us_dimm_colls[0]);
+      tc.us_dimms.emplace_back(local_us_dimm_colls[0]);
     } else {
       tc.enough_dimms = false;
     }
@@ -64,11 +64,11 @@ std::vector<param_with_us> GetParamsWithUS() {
   {
     param_with_us tc;
     tc.description = "from non-dimm to US dimm";
-    if (us_dimm_colls.size() >= 1) {
+    if (local_us_dimm_colls.size() >= 1) {
       tc.enough_dimms = true;
       tc.src_pool_dir = local_dimm_config->GetTestDir() + SEPARATOR;
-      tc.dest_pool_dir = us_dimm_colls[0].GetMountpoint() + SEPARATOR;
-      tc.us_dimms.emplace_back(us_dimm_colls[0]);
+      tc.dest_pool_dir = local_us_dimm_colls[0].GetMountpoint() + SEPARATOR;
+      tc.us_dimms.emplace_back(local_us_dimm_colls[0]);
     } else {
       tc.enough_dimms = false;
     }
@@ -79,11 +79,11 @@ std::vector<param_with_us> GetParamsWithUS() {
   {
     param_with_us tc;
     tc.description = "from US dimm to non-US dimm";
-    if (us_dimm_colls.size() >= 1 && non_us_dimm_colls.size() >= 1) {
+    if (local_us_dimm_colls.size() >= 1 && local_non_us_dimm_colls.size() >= 1) {
       tc.enough_dimms = true;
-      tc.src_pool_dir = us_dimm_colls[0].GetMountpoint() + SEPARATOR;
-      tc.dest_pool_dir = non_us_dimm_colls[0].GetMountpoint() + SEPARATOR;
-      tc.us_dimms.emplace_back(us_dimm_colls[0]);
+      tc.src_pool_dir = local_us_dimm_colls[0].GetMountpoint() + SEPARATOR;
+      tc.dest_pool_dir = local_non_us_dimm_colls[0].GetMountpoint() + SEPARATOR;
+      tc.us_dimms.emplace_back(local_us_dimm_colls[0]);
     } else {
       tc.enough_dimms = false;
     }
@@ -94,11 +94,11 @@ std::vector<param_with_us> GetParamsWithUS() {
   {
     param_with_us tc;
     tc.description = "from US dimm to US dimm";
-    if (us_dimm_colls.size() >= 2) {
+    if (local_us_dimm_colls.size() >= 2) {
       tc.enough_dimms = true;
-      tc.src_pool_dir = us_dimm_colls[1].GetMountpoint() + SEPARATOR;
-      tc.dest_pool_dir = us_dimm_colls[0].GetMountpoint() + SEPARATOR;
-      tc.us_dimms = {us_dimm_colls[0], us_dimm_colls[1]};
+      tc.src_pool_dir = local_us_dimm_colls[1].GetMountpoint() + SEPARATOR;
+      tc.dest_pool_dir = local_us_dimm_colls[0].GetMountpoint() + SEPARATOR;
+      tc.us_dimms = {local_us_dimm_colls[0], local_us_dimm_colls[1]};
     } else {
       tc.enough_dimms = false;
     }
@@ -149,7 +149,7 @@ TEST_P(MoveCleanPool, TC_MOVE_POOL_CLEAN_after_first_us) {
   ASSERT_TRUE(PassedOnPreviousPhase())
       << "Part of test before shutdown failed.";
   /* Step4. */
-  ASSERT_NO_FATAL_FAILURE(AssertUSCIncreasedBy(1, param.us_dimms));
+  ASSERT_TRUE(inject_mgmt_.IsUSCIncreasedBy(1, param.us_dimms));
 
   /* Step5. */
   auto out =
@@ -211,7 +211,7 @@ TEST_P(MoveDirtyPool, TC_MOVE_POOL_DIRTY_after_first_us) {
       << "Part of test before shutdown failed.";
 
   param_with_us param = GetParam();
-  ASSERT_NO_FATAL_FAILURE(AssertUSCIncreasedBy(1, param.us_dimms));
+  ASSERT_TRUE(inject_mgmt_.IsUSCIncreasedBy(1, param.us_dimms));
 
   /* Step4. */
   auto out =
@@ -247,11 +247,11 @@ std::vector<param_no_us> GetParamsNoUS() {
   {
     param_no_us tc;
     tc.description = "From non US dimm to non-dimm";
-    if (non_us_dimm_colls.size() >= 1) {
+    if (local_non_us_dimm_colls.size() >= 1) {
       tc.enough_dimms = true;
-      tc.src_pool_dir = non_us_dimm_colls[0].GetMountpoint() + SEPARATOR;
+      tc.src_pool_dir = local_non_us_dimm_colls[0].GetMountpoint() + SEPARATOR;
       tc.dest_pool_dir = local_dimm_config->GetTestDir() + SEPARATOR;
-      tc.non_us_dimms.emplace_back(non_us_dimm_colls[0]);
+      tc.non_us_dimms.emplace_back(local_non_us_dimm_colls[0]);
     } else {
       tc.enough_dimms = false;
     }
@@ -262,11 +262,11 @@ std::vector<param_no_us> GetParamsNoUS() {
   {
     param_no_us tc;
     tc.description = "From non-dimm to non US dimm";
-    if (non_us_dimm_colls.size() >= 1) {
+    if (local_non_us_dimm_colls.size() >= 1) {
       tc.enough_dimms = true;
       tc.src_pool_dir = local_dimm_config->GetTestDir() + SEPARATOR;
-      tc.dest_pool_dir = non_us_dimm_colls[0].GetMountpoint() + SEPARATOR;
-      tc.non_us_dimms.emplace_back(non_us_dimm_colls[0]);
+      tc.dest_pool_dir = local_non_us_dimm_colls[0].GetMountpoint() + SEPARATOR;
+      tc.non_us_dimms.emplace_back(local_non_us_dimm_colls[0]);
     } else {
       tc.enough_dimms = false;
     }
@@ -315,7 +315,7 @@ TEST_P(MoveCleanPoolWithoutUS, TC_MOVE_POOL_CLEAN_WITHOUT_US_after_first_us) {
   ASSERT_TRUE(PassedOnPreviousPhase())
       << "Part of test before shutdown failed.";
 
-  ASSERT_NO_FATAL_FAILURE(AssertUSCIncreasedBy(0, param.non_us_dimms));
+  ASSERT_TRUE(inject_mgmt_.IsUSCIncreasedBy(0, param.non_us_dimms));
   /* Step3 */
   auto out =
       shell_.ExecuteCommand("mv " + src_pool_path_ + " " + dest_pool_path_);
@@ -373,7 +373,7 @@ TEST_P(MoveDirtyPoolWithoutUS, TC_MOVE_POOL_DIRTY_WITHOUT_US_after_first_us) {
   ASSERT_TRUE(PassedOnPreviousPhase())
       << "Part of test before shutdown failed.";
 
-  ASSERT_NO_FATAL_FAILURE(AssertUSCIncreasedBy(0, param.non_us_dimms));
+  ASSERT_TRUE(inject_mgmt_.IsUSCIncreasedBy(0, param.non_us_dimms));
 
   /* Step3 */
   auto out =

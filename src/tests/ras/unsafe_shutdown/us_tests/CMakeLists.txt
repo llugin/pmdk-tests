@@ -28,7 +28,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-include(${CMAKE_CURRENT_LIST_DIR}/us_test_controller/CMakeLists.txt)
-include(${CMAKE_CURRENT_LIST_DIR}/us_tests/CMakeLists.txt)
-include(${CMAKE_CURRENT_LIST_DIR}/injecter_cli/CMakeLists.txt)
+include(${CMAKE_CURRENT_LIST_DIR}/us_local/CMakeLists.txt)
+include(${CMAKE_CURRENT_LIST_DIR}/us_remote/CMakeLists.txt)
 

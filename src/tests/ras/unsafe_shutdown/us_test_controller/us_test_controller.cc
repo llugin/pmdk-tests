@@ -30,13 +30,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "us_remote_tester.h"
+#include "us_test_controller.h"
 
-void USRemoteTester::SetUp() {
+void USTestController::SetUp() {
   ASSERT_TRUE(WaitForDutsConnection(15));
 }
 
-void USRemoteTester::TearDown() {
+void USTestController::TearDown() {
   for (auto& dut : *ras_config) {
     std::string cmd = dut.GetBinDir() + SEPARATOR + "UNSAFE_SHUTDOWN cleanup";
     std::cout << "Executing command: " << cmd << std::endl;
@@ -46,7 +46,7 @@ void USRemoteTester::TearDown() {
   }
 }
 
-int USRemoteTester::PhaseExecute(const std::string& filter,
+int USTestController::PhaseExecute(const std::string& filter,
                                  const std::string& arg) {
   auto& primary_dut = ras_config->operator[](0);
 
@@ -59,7 +59,7 @@ int USRemoteTester::PhaseExecute(const std::string& filter,
   return out.GetExitCode();
 }
 
-bool USRemoteTester::RunPowerCycle() {
+bool USTestController::RunPowerCycle() {
   bool ret = true;
 
   std::vector<std::future<Output<char>>> threads;
@@ -81,7 +81,7 @@ bool USRemoteTester::RunPowerCycle() {
   return ret;
 }
 
-bool USRemoteTester::WaitForDutsConnection(unsigned int timeout) {
+bool USTestController::WaitForDutsConnection(unsigned int timeout) {
   bool ret = true;
 
   std::vector<std::future<bool>> threads;
@@ -100,7 +100,7 @@ bool USRemoteTester::WaitForDutsConnection(unsigned int timeout) {
   return ret;
 }
 
-TEST_F(USRemoteTester, USC_TEST) {
+TEST_F(USTestController, USC_TEST) {
   /* Phase 1 with US inject */
   std::string before_filter = "--gtest_filter=\"" + *filter + "*_before_us*\"";
   int exit_code = PhaseExecute(before_filter, "inject");

@@ -65,7 +65,6 @@ class DimmCollection final {
   ndctl_ctx *ctx_ = nullptr;
   std::string mountpoint_;
   std::vector<Dimm> dimms_;
-
   ndctl_interleave_set *GetInterleaveSet(ndctl_ctx *ctx, struct stat64 st);
 
  public:
