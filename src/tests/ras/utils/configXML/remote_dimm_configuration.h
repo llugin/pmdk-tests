@@ -72,6 +72,9 @@ class RemoteDimmNode final {
   std::string &operator[](int idx) {
     return mountpoints_.at(idx);
   }
+  int GetSize() const {
+    return mountpoints_.size();
+  }
 
   std::vector<std::string>::iterator begin() {
     return mountpoints_.begin();
@@ -91,6 +94,9 @@ class RemoteDimmConfigurationsCollection final
 
  public:
   const RemoteDimmNode &GetNode(int idx) const {
+    return remote_configurations_.at(idx);
+  }
+  RemoteDimmNode &operator[](int idx) {
     return remote_configurations_.at(idx);
   }
 };

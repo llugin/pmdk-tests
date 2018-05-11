@@ -28,7 +28,32 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-include(${CMAKE_CURRENT_LIST_DIR}/us_test_controller/CMakeLists.txt)
-include(${CMAKE_CURRENT_LIST_DIR}/us_tests/CMakeLists.txt)
-include(${CMAKE_CURRENT_LIST_DIR}/injecter_cli/CMakeLists.txt)
+# UNSAFE_SHUTDOWN_LOCAL
+set(DIR ${CMAKE_CURRENT_LIST_DIR})
+set(PREFIX_FILTER "")
 
+file(GLOB_RECURSE us_SRC
+	"${DIR}/*.h"
+	"${DIR}/*.cc")
+
+set (inject_utils_DIR "${DIR}/../../inject_utils")
+file (GLOB_RECURSE inject_utils_SRC
+  "${inject_utils_DIR}/*.h"
+  "${inject_utils_DIR}/*.cc")
+
+set (us_base_DIR "${DIR}/..")
+file (GLOB us_base_SRC
+  "${us_base_DIR}/*h"
+  "${us_base_DIR}/*cc")
+
+add_executable(UNSAFE_SHUTDOWN_LOCAL
+	${us_SRC} ${us_base_SRC} ${inject_utils_SRC})
+
+set_source_groups("${PREFIX_FILTER}" ${us_SRC} ${inject_utils_SRC}
+ ${us_base_SRC})
+include_directories(src/tests/ras/utils ${inject_utils_DIR}
+ ${us_base_DIR})
+
+target_link_libraries(UNSAFE_SHUTDOWN_LOCAL Utils RasUtils libgtest ${Libpmemblk_LIBRARIES}
+${Libpmemlog_LIBRARIES} ${Libpmemobj_LIBRARIES} ${Libpmempool_LIBRARIES})
+add_dependencies(UNSAFE_SHUTDOWN_LOCAL Utils RasUtils libgtest)

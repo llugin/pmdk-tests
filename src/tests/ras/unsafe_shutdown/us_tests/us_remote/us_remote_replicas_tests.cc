@@ -37,34 +37,31 @@ void SyncRemoteReplica::SetUp() {
 
   remote_poolset_tc param = GetParam();
   ASSERT_TRUE(param.enough_dimms) << "Not enough dimms specified to run test.";
-  injecter_.reset(new Injecter{param.us_dimms});
 }
 
-void SyncRemoteReplica::InjectRemote(remote_poolset rp) {
-  std::string remote_injecter_path = remote_bin_dir_ + "US_REMOTE_INJECTER";
-  std::string mountpoints_arg;
-  for (const DimmDevice& d : rp.us_dimms) {
-    mountpoints_arg += d.GetMountpoint() + " ";
-  };
-  SshRunner ssh_runner{rp.host};
-  std::string cmd = remote_injecter_path + " inject " + mountpoints_arg;
-  auto out = ssh_runner.ExecuteRemote(cmd);
-  ASSERT_EQ(out.GetExitCode(), ssh_runner.connection_error_)
-      << cmd << std::endl
-      << "Injection did not end with reboot";
+Output<char> SyncRemoteReplica::CreateRemotePoolsetFile(Poolset& poolset,
+                                                        std::string host) {
+  std::string c;
+  for (const auto& line : poolset.GetContent()) {
+    c += line + '\n';
+  }
+
+  IShell shell{host};
+  auto out =
+      shell.ExecuteCommand("echo \'" + c + "\' > " + poolset.GetFullPath());
+  return out;
 }
 
-void SyncRemoteReplica::ConfirmInjectedRemote(remote_poolset rp) {
-  std::string remote_injecter_path = remote_bin_dir_ + "US_REMOTE_INJECTER";
+void SyncRemoteReplica::CheckUnsafeShutdownRemote(const remote_poolset& rp) {
+  std::string remote_injecter_path = remote_bin_dir_ + "INJECTER_CLI";
   std::string mountpoints_arg;
-  for (const DimmDevice& d : rp.us_dimms) {
-    mountpoints_arg += d.GetMountpoint() + " ";
+  for (const auto& mnt : rp.us_dimm_mountpoints) {
+    mountpoints_arg += mnt + " ";
   };
-  SshRunner ssh_runner{rp.host};
-  ASSERT_TRUE(ssh_runner.WaitForConnection(15))
-      << "Remote host " << rp.host << " is not responding after timeout.";
-  auto out = ssh_runner.ExecuteRemote(remote_injecter_path + " confirm " +
-                                      mountpoints_arg);
+  IShell shell{rp.host};
+  auto out = shell.ExecuteCommand(remote_injecter_path + " confirm " +
+                                  mountpoints_arg);
+
   ASSERT_EQ(out.GetExitCode(), 0) << "US injection was unsuccesful."
                                   << std::endl
                                   << out.GetContent();
@@ -87,7 +84,7 @@ std::ostream& operator<<(std::ostream& stream, remote_poolset_tc const& p) {
   }
 
   content += "Unsafe shutdown on: ";
-  for (const auto& dimm : p.us_dimms) {
+  for (const auto& dimm : p.us_dimm_colls) {
     content += dimm.GetMountpoint() + "\t";
   }
 
@@ -95,7 +92,7 @@ std::ostream& operator<<(std::ostream& stream, remote_poolset_tc const& p) {
   return stream;
 }
 
-std::string remote_poolset::GetSectionLine() {
+std::string remote_poolset::GetReplicaLine() {
   return "REPLICA " + this->host + " ../../" + this->poolset.GetFullPath();
 }
 
@@ -145,24 +142,17 @@ TEST_P(SyncRemoteReplica, TC10_SYNC_REMOTE_REPLICA_before_us) {
                           << pmemobj_errormsg();
 
   ObjData<int> pd{pop};
-  pd.WriteData();
-
-  injecter_->InjectUS();
-  for (const auto& rp : param.remote_poolsets) {
-    if (rp.us_dimms.size() > 0) {
-      InjectRemote(rp);
-    }
-  }
+  ASSERT_EQ(0, pd.Write(obj_data_)) << "Writing data to pool failed";
 }
 
 TEST_P(SyncRemoteReplica, TC10_SYNC_REMOTE_REPLICA_after_first_us) {
+  remote_poolset_tc param = GetParam();
   ASSERT_TRUE(PassedOnPreviousPhase())
       << "Part of test before shutdown failed.";
-  ASSERT_TRUE(injecter_->ConfirmRebootedWithUS());
+  ASSERT_TRUE(inject_mgmt_.IsUSCIncreasedBy(1, param.us_dimm_colls));
 
-  remote_poolset_tc param = GetParam();
   for (const auto& rp : param.remote_poolsets) {
-    ASSERT_NO_FATAL_FAILURE(ConfirmInjectedRemote(rp));
+    ASSERT_NO_FATAL_FAILURE(CheckUnsafeShutdownRemote(rp));
   }
 
   Poolset ps = param.poolset;
@@ -191,7 +181,7 @@ TEST_P(SyncRemoteReplica, TC10_SYNC_REMOTE_REPLICA_after_first_us) {
 
   ASSERT_NE(pop, nullptr) << "Syncable pool could not be opened after sync";
   ObjData<int> pd{pop};
-  pd.AssertDataCorrect();
+  ASSERT_EQ(obj_data_, pd.Read()) << "Data read from pool differs from written";
   pmemobj_close(pop);
 }
 
@@ -201,16 +191,16 @@ std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams() {
   /* Remote replica on healthy DIMM, local replica on US DIMM */
   {
     remote_poolset_tc tc;
-    if (us_dimms.size() >= 2 && non_us_dimms.size() >= 1 &&
-        remote_non_us_dimms.size() >= 1) {
+    if (local_us_dimm_colls.size() >= 2 &&
+        local_non_us_dimm_colls.size() >= 1 &&
+        remote_non_us_dimm_mountpoints.size() >= 1) {
       tc.enough_dimms = true;
       remote_poolset rp;
-      rp.host = "localhost";  // TODO
-      rp.us_dimms = {};
+      rp.us_dimm_mountpoints = {};
       std::string remote_replica_path =
-          remote_non_us_dimms[0].GetMountpoint() + SEPARATOR + "remote1";
+          remote_non_us_dimm_mountpoints[0] + SEPARATOR + "remote1";
       rp.poolset =
-          Poolset{remote_non_us_dimms[0].GetMountpoint(),
+          Poolset{remote_non_us_dimm_mountpoints[0],
                   "remote_pool1.set",
                   {{"PMEMPOOLSET", "18MB " + remote_replica_path + ".part0",
                     "9MB " + remote_replica_path + ".part1"}}};
@@ -218,12 +208,12 @@ std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams() {
       tc.remote_poolsets = {rp};
 
       std::string local_master_path =
-          us_dimms[0].GetMountpoint() + SEPARATOR + "master7";
+          local_us_dimm_colls[0].GetMountpoint() + SEPARATOR + "master7";
       std::string local_replica_path =
-          us_dimms[1].GetMountpoint() + SEPARATOR + "replica7";
+          local_us_dimm_colls[1].GetMountpoint() + SEPARATOR + "replica7";
       tc.poolset = Poolset{
           // clang-format off
-      us_dimms[0].GetMountpoint(),
+      local_us_dimm_colls[0].GetMountpoint(),
       "pool7.set",
       {{"PMEMPOOLSET",
         "9MB " + local_master_path + ".part0",
@@ -232,9 +222,9 @@ std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams() {
        {"REPLICA",
         "9MB " + local_replica_path + ".part0",
         "18MB " + local_replica_path + ".part1"},
-       {rp.GetSectionLine()}}  // clang-format on
+       {rp.GetReplicaLine()}}  // clang-format on
       };
-      tc.us_dimms = {us_dimms[0], us_dimms[1]};
+      tc.us_dimm_colls = {local_us_dimm_colls[0], local_us_dimm_colls[1]};
       tc.is_syncable = true;
     } else {
       tc.enough_dimms = false;
@@ -245,25 +235,25 @@ std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams() {
   /* Remote replica on US DIMM, local replica on healthy DIMM */
   {
     remote_poolset_tc tc;
-    if (remote_us_dimms.size() >= 1 && non_us_dimms.size() >= 1) {
+    if (remote_us_dimm_mountpoints.size() >= 1 &&
+        local_non_us_dimm_colls.size() >= 1) {
       tc.enough_dimms = true;
       remote_poolset rp;
-      rp.host = "localhost";  // TODO;
-      rp.us_dimms = {remote_us_dimms.front()};
+      rp.us_dimm_mountpoints = {remote_us_dimm_mountpoints.front()};
       std::string remote_replica_path =
-          remote_us_dimms[0].GetMountpoint() + SEPARATOR + "remote2";
+          remote_us_dimm_mountpoints[0] + SEPARATOR + "remote2";
       rp.poolset =
-          Poolset{remote_us_dimms[0].GetMountpoint(),
+          Poolset{remote_us_dimm_mountpoints[0],
                   "remote_pool2.set",
                   {{"PMEMPOOLSET", "18MB " + remote_replica_path + ".part0",
                     "9MB " + remote_replica_path + ".part1"}}};
       tc.remote_poolsets = {rp};
       std::string local_master_path =
-          non_us_dimms[0].GetMountpoint() + SEPARATOR + "master8";
+          local_non_us_dimm_colls[0].GetMountpoint() + SEPARATOR + "master8";
       std::string local_replica_path =
-          non_us_dimms[0].GetMountpoint() + SEPARATOR + "replica8";
+          local_non_us_dimm_colls[0].GetMountpoint() + SEPARATOR + "replica8";
       tc.poolset =
-          Poolset{us_dimms[0].GetMountpoint(),  // clang-format off
+          Poolset{local_us_dimm_colls[0].GetMountpoint(),  // clang-format off
       "pool_8.set",
       {{"PMEMPOOLSET",
         "9MB " + local_master_path + ".part0",
@@ -272,8 +262,8 @@ std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams() {
        {"REPLICA",
         "9MB " + local_replica_path + ".part0",
         "18MB " + local_replica_path + ".part1"},
-       {rp.GetSectionLine()}}};  // clang-format on
-      tc.us_dimms = {us_dimms[0]};
+       {rp.GetReplicaLine()}}};  // clang-format on
+      tc.us_dimm_colls = {local_us_dimm_colls[0]};
       tc.is_syncable = true;
     } else {
       tc.enough_dimms = false;
@@ -285,16 +275,16 @@ std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams() {
   {
     remote_poolset_tc tc;
 
-    if (remote_us_dimms.size() >= 1 && non_us_dimms.size() >= 1 &&
-        us_dimms.size() >= 1) {
+    if (remote_us_dimm_mountpoints.size() >= 1 &&
+        local_non_us_dimm_colls.size() >= 1 &&
+        local_us_dimm_colls.size() >= 1) {
       tc.enough_dimms = true;
       remote_poolset rp;
-      rp.host = "localhost";
-      rp.us_dimms = {remote_us_dimms.front()};
+      rp.us_dimm_mountpoints = {remote_us_dimm_mountpoints.front()};
       std::string remote_replica_path =
-          remote_us_dimms[0].GetMountpoint() + SEPARATOR + "remote3";
+          remote_us_dimm_mountpoints[0] + SEPARATOR + "remote3";
       rp.poolset =
-          Poolset{remote_us_dimms[0].GetMountpoint(),
+          Poolset{remote_us_dimm_mountpoints[0],
                   "remote_pool3.set",  // clang-format off
            {{"PMEMPOOLSET",
              "18MB " + remote_replica_path + ".part0",
@@ -302,12 +292,12 @@ std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams() {
       // clang-format on
 
       std::string local_master_path =
-          us_dimms[0].GetMountpoint() + SEPARATOR + "master9";
+          local_us_dimm_colls[0].GetMountpoint() + SEPARATOR + "master9";
       std::string local_replica_path =
-          non_us_dimms[0].GetMountpoint() + SEPARATOR + "replica9";
+          local_non_us_dimm_colls[0].GetMountpoint() + SEPARATOR + "replica9";
       tc.remote_poolsets = {rp};
       tc.poolset =
-          Poolset{us_dimms[0].GetMountpoint(),
+          Poolset{local_us_dimm_colls[0].GetMountpoint(),
                   "pool_9.set",  // clang-format off
       {{"PMEMPOOLSET",
         "9MB " + local_master_path + ".part0",
@@ -316,9 +306,9 @@ std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams() {
        {"REPLICA",
         "9MB " + local_replica_path + ".part0",
         "18MB " + local_replica_path + ".part1"},
-       {rp.GetSectionLine()}}};
+       {rp.GetReplicaLine()}}};
       // clang-format on
-      tc.us_dimms = {us_dimms[0]};
+      tc.us_dimm_colls = {local_us_dimm_colls[0]};
       tc.is_syncable = false;
     } else {
       tc.enough_dimms = false;
@@ -329,41 +319,40 @@ std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams() {
   /* Remote replica on US DIMM, remote replica on non-DIMM */
   {
     remote_poolset_tc tc;
-    if (remote_us_dimms.size() >= 1 && us_dimms.size() >= 1) {
+    if (remote_us_dimm_mountpoints.size() >= 1 &&
+        local_us_dimm_colls.size() >= 1) {
       tc.enough_dimms = true;
       remote_poolset rp1;
-      rp1.host = "localhost";
-      rp1.us_dimms = {remote_us_dimms.front()};
+      rp1.us_dimm_mountpoints = {remote_us_dimm_mountpoints.front()};
       std::string remote_replica_path1 =
-          remote_us_dimms[0].GetMountpoint() + SEPARATOR + "remote4";
+          remote_us_dimm_mountpoints[0] + SEPARATOR + "remote4";
       rp1.poolset =
-          Poolset{remote_us_dimms[0].GetMountpoint(),
+          Poolset{remote_us_dimm_mountpoints[0],
                   "remote_pool4.set",
                   {{"PMEMPOOLSET", "18MB " + remote_replica_path1 + ".part0",
                     "9MB " + remote_replica_path1 + ".part1"}}};
 
       remote_poolset rp2;
-      rp2.host = "localhost";
-      rp2.us_dimms = {};
+      rp2.us_dimm_mountpoints = {};
       std::string remote_replica_path2 =
-          local_config->GetTestDir() + SEPARATOR + "remote5";
+          remote_dimm_config->GetTestDir() + SEPARATOR + "remote5";
       rp2.poolset =
-          Poolset{local_config->GetTestDir(),  // remote config
+          Poolset{remote_dimm_config->GetTestDir(),  // remote config
                   "remote_pool5.set",
                   {{"PMEMPOOLSET", "18MB " + remote_replica_path2 + ".part0",
                     "9MB " + remote_replica_path2 + ".part1"}}};
       tc.remote_poolsets = {rp1, rp2};
       std::string local_master_path =
-          us_dimms[0].GetMountpoint() + SEPARATOR + "master10";
+          local_us_dimm_colls[0].GetMountpoint() + SEPARATOR + "master10";
       tc.poolset =
-          Poolset{us_dimms[0].GetMountpoint(),
+          Poolset{local_us_dimm_colls[0].GetMountpoint(),
                   "pool_10.set",
                   {{"PMEMPOOLSET", "9MB " + local_master_path + ".part0",
                     "9MB " + local_master_path + ".part1",
                     "9MB " + local_master_path + ".part2"},
-                   {rp1.GetSectionLine()},
-                   {rp2.GetSectionLine()}}};
-      tc.us_dimms = {us_dimms[0]};
+                   {rp1.GetReplicaLine()},
+                   {rp2.GetReplicaLine()}}};
+      tc.us_dimm_colls.emplace_back(local_us_dimm_colls[0]);
       tc.is_syncable = true;
     } else {
       tc.enough_dimms = false;
@@ -374,41 +363,40 @@ std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams() {
   /* Remote replica on US_DIMM */
   {
     remote_poolset_tc tc;
-    if (remote_us_dimms.size() >= 1 && us_dimms.size() >= 1) {
+    if (remote_us_dimm_mountpoints.size() >= 1 &&
+        local_us_dimm_colls.size() >= 1) {
       tc.enough_dimms = true;
       remote_poolset rp1;
-      rp1.host = "localhost";
-      rp1.us_dimms = {remote_us_dimms.front()};
+      rp1.us_dimm_mountpoints.emplace_back(remote_us_dimm_mountpoints.front());
       std::string remote_replica_path1 =
-          remote_us_dimms[0].GetMountpoint() + SEPARATOR + "remote4";
+          remote_us_dimm_mountpoints[0] + SEPARATOR + "remote4";
       rp1.poolset =
-          Poolset{remote_us_dimms[0].GetMountpoint(),
+          Poolset{remote_us_dimm_mountpoints[0],
                   "remote_pool4.set",
                   {{"PMEMPOOLSET", "18MB " + remote_replica_path1 + ".part0",
                     "9MB " + remote_replica_path1 + ".part1"}}};
 
       remote_poolset rp2;
-      rp2.host = "localhost";
-      rp2.us_dimms = {};
+      rp2.us_dimm_mountpoints = {};
       std::string remote_replica_path2 =
-          local_config->GetTestDir() + SEPARATOR + "remote5";
+          remote_dimm_config->GetTestDir() + SEPARATOR + "remote5";
       rp2.poolset =
-          Poolset{local_config->GetTestDir(),  // remote config
+          Poolset{remote_dimm_config->GetTestDir(),
                   "remote_pool5.set",
                   {{"PMEMPOOLSET", "18MB " + remote_replica_path2 + ".part0",
                     "9MB " + remote_replica_path2 + ".part1"}}};
       tc.remote_poolsets = {rp1, rp2};
       std::string local_master_path =
-          us_dimms[0].GetMountpoint() + SEPARATOR + "master10";
+          local_us_dimm_colls[0].GetMountpoint() + SEPARATOR + "master10";
       tc.poolset =
-          Poolset{us_dimms[0].GetMountpoint(),
+          Poolset{local_us_dimm_colls[0].GetMountpoint(),
                   "pool_10.set",
                   {{"PMEMPOOLSET", "9MB " + local_master_path + ".part0",
                     "9MB " + local_master_path + ".part1",
                     "9MB " + local_master_path + ".part2"},
-                   {rp1.GetSectionLine()},
-                   {rp2.GetSectionLine()}}};
-      tc.us_dimms = {us_dimms[0]};
+                   {rp1.GetReplicaLine()},
+                   {rp2.GetReplicaLine()}}};
+      tc.us_dimm_colls.emplace_back(local_us_dimm_colls.front());
       tc.is_syncable = true;
     } else {
       tc.enough_dimms = false;

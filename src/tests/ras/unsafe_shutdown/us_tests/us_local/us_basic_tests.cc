@@ -33,9 +33,9 @@
 #include "us_basic_tests.h"
 
 void UnsafeShutdownBasic::SetUp() {
-  ASSERT_LE(1, us_dimm_colls.size())
+  ASSERT_LE(1, local_us_dimm_colls.size())
       << "Test needs more dimms to run than was specified.";
-  us_dimm_pool_path_ = us_dimm_colls.front().GetMountpoint() + SEPARATOR +
+  us_dimm_pool_path_ = local_us_dimm_colls.front().GetMountpoint() + SEPARATOR +
                        GetNormalizedTestName() + "_pool";
 }
 
@@ -69,7 +69,7 @@ TEST_F(UnsafeShutdownBasic, TRY_OPEN_OBJ_after_first_us) {
       << "Part of test before shutdown failed.";
 
   /* Step4. */
-  ASSERT_NO_FATAL_FAILURE(AssertUSCIncreasedBy(1, {us_dimm_colls.front()}));
+  ASSERT_TRUE(inject_mgmt_.IsUSCIncreasedBy(1, {local_us_dimm_colls.front()}));
 
   /* Step5. */
   ASSERT_EQ(nullptr, pmemobj_open(us_dimm_pool_path_.c_str(), nullptr))
@@ -119,7 +119,7 @@ TEST_F(UnsafeShutdownBasic, TRY_OPEN_BLK_after_first_us) {
       << "Part of test before shutdown failed.";
 
   /* Step4. */
-  ASSERT_NO_FATAL_FAILURE(AssertUSCIncreasedBy(1, {us_dimm_colls.front()}));
+  ASSERT_TRUE(inject_mgmt_.IsUSCIncreasedBy(1, {local_us_dimm_colls.front()}));
 
   /* Step5. */
   ASSERT_EQ(nullptr, pmemblk_open(us_dimm_pool_path_.c_str(), blk_size_))
@@ -170,7 +170,7 @@ TEST_F(UnsafeShutdownBasic, TRY_OPEN_LOG_after_first_us) {
       << "Part of test before shutdown failed.";
 
   /* Step4. */
-  ASSERT_NO_FATAL_FAILURE(AssertUSCIncreasedBy(1, {us_dimm_colls.front()}));
+  ASSERT_TRUE(inject_mgmt_.IsUSCIncreasedBy(1, {local_us_dimm_colls.front()}));
 
   /* Step5. */
   ASSERT_EQ(nullptr, pmemlog_open(us_dimm_pool_path_.c_str()))
@@ -218,13 +218,13 @@ TEST_F(UnsafeShutdownBasic, TC_TRY_OPEN_AFTER_DOUBLE_US_before_us) {
 TEST_F(UnsafeShutdownBasic, TC_TRY_OPEN_AFTER_DOUBLE_US_after_first_us) {
   ASSERT_TRUE(PassedOnPreviousPhase())
       << "Part of test before shutdown failed.";
-  ASSERT_NO_FATAL_FAILURE(AssertUSCIncreasedBy(1, {us_dimm_colls.front()}));
+  ASSERT_TRUE(inject_mgmt_.IsUSCIncreasedBy(1, {local_us_dimm_colls.front()}));
 }
 
 TEST_F(UnsafeShutdownBasic, TC_TRY_OPEN_AFTER_DOUBLE_US_after_second_us) {
   ASSERT_TRUE(PassedOnPreviousPhase())
       << "Part of test before shutdown failed.";
-  ASSERT_NO_FATAL_FAILURE(AssertUSCIncreasedBy(1, {us_dimm_colls.front()}));
+  ASSERT_TRUE(inject_mgmt_.IsUSCIncreasedBy(1, {local_us_dimm_colls.front()}));
 
   /* step4 */
   ASSERT_EQ(nullptr, pmemobj_open(us_dimm_pool_path_.c_str(), nullptr))
@@ -280,7 +280,7 @@ TEST_F(UnsafeShutdownBasic, TC_OPEN_CLEAN_after_first_us) {
       << "Part of test before shutdown failed.";
 
   /* Step5. */
-  ASSERT_NO_FATAL_FAILURE(AssertUSCIncreasedBy(1, {us_dimm_colls.front()}));
+  ASSERT_TRUE(inject_mgmt_.IsUSCIncreasedBy(1, {local_us_dimm_colls.front()}));
 
   /* Step6. */
   PMEMobjpool* pop = pmemobj_open(us_dimm_pool_path_.c_str(), nullptr);
@@ -294,9 +294,9 @@ TEST_F(UnsafeShutdownBasic, TC_OPEN_CLEAN_after_first_us) {
 }
 
 void UnsafeShutdownBasicWithoutUS::SetUp() {
-  ASSERT_LE(1, non_us_dimm_colls.size())
+  ASSERT_LE(1, local_non_us_dimm_colls.size())
       << "Test needs more dimms to run than was specified.";
-  non_us_dimm_pool_path_ = non_us_dimm_colls.front().GetMountpoint() +
+  non_us_dimm_pool_path_ = local_non_us_dimm_colls.front().GetMountpoint() +
                            SEPARATOR + GetNormalizedTestName() + "_pool";
 }
 
@@ -326,7 +326,7 @@ TEST_F(UnsafeShutdownBasicWithoutUS, TC_OPEN_DIRTY_NO_US_after_first_us) {
   ASSERT_TRUE(PassedOnPreviousPhase())
       << "Part of test before shutdown failed.";
 
-  ASSERT_NO_FATAL_FAILURE(AssertUSCIncreasedBy(0, {non_us_dimm_colls.front()}));
+  ASSERT_TRUE(inject_mgmt_.IsUSCIncreasedBy(0, {local_non_us_dimm_colls.front()}));
 
   /* Step3. */
   PMEMobjpool* pop = pmemobj_open(non_us_dimm_pool_path_.c_str(), nullptr);

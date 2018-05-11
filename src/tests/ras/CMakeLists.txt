@@ -30,5 +30,4 @@
 
 include(${CMAKE_CURRENT_LIST_DIR}/utils/CMakeLists.txt)
 include(${CMAKE_CURRENT_LIST_DIR}/unsafe_shutdown/CMakeLists.txt)
-include(${CMAKE_CURRENT_LIST_DIR}/us_remote_tester/CMakeLists.txt)
 

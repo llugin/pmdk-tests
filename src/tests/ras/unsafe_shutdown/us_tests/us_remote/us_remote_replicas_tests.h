@@ -30,42 +30,43 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PMDK_TESTS_SRC_UTILS_CONFIGXML_LOCAL_DIMM_CONFIGURATION_H_
-#define PMDK_TESTS_SRC_UTILS_CONFIGXML_LOCAL_DIMM_CONFIGURATION_H_
+#ifndef US_REMOTE_REPLICAS_TESTS_H
+#define US_REMOTE_REPLICAS_TESTS_H
 
-#include "configXML/read_config.h"
-#include "dimm/dimm.h"
-#include "pugixml.hpp"
+#include "configXML/remote_dimm_configuration.h"
+#include "unsafe_shutdown.h"
 
-class LocalDimmConfiguration final : public ReadConfig<LocalDimmConfiguration> {
- private:
-  friend class ReadConfig<LocalDimmConfiguration>;
-  std::string test_dir_;
-  std::vector<DimmCollection> dimm_collections_;
-  int FillConfigFields(pugi::xml_node &&root);
-  int SetDimmCollections(pugi::xml_node &&node);
+extern std::unique_ptr<RemoteDimmNode> remote_dimm_config;
+extern std::vector<std::string> remote_us_dimm_mountpoints;
+extern std::vector<std::string> remote_non_us_dimm_mountpoints;
 
- public:
-  const std::string &GetTestDir() const {
-    return this->test_dir_;
-  }
-  const std::vector<DimmCollection> &GetDimmCollections() {
-    return this->dimm_collections_;
-  }
-  DimmCollection &operator[](int idx) {
-    return dimm_collections_.at(idx);
-  }
-  int GetSize() const {
-    return dimm_collections_.size();
-  }
-
-  const std::vector<DimmCollection>::const_iterator begin() const noexcept {
-    return dimm_collections_.cbegin();
-  }
-
-  const std::vector<DimmCollection>::const_iterator end() const noexcept {
-    return dimm_collections_.cend();
-  }
+struct remote_poolset {
+  std::string host = remote_dimm_config->GetAddress();
+  std::vector<std::string> us_dimm_mountpoints;
+  Poolset poolset;
+  std::string GetReplicaLine();
 };
 
-#endif  // !PMDK_TESTS_SRC_UTILS_CONFIGXML_LOCAL_DIMM_CONFIGURATION_H_
+struct remote_poolset_tc {
+  std::vector<remote_poolset> remote_poolsets;
+  Poolset poolset;
+  std::vector<DimmCollection> us_dimm_colls;
+  bool enough_dimms;
+  bool is_syncable;
+};
+
+class SyncRemoteReplica
+    : public UnsafeShutdown,
+      public ::testing::WithParamInterface<remote_poolset_tc> {
+ public:
+  std::string remote_bin_dir_;
+  void SetUp() override;
+  Output<char> CreateRemotePoolsetFile(Poolset& poolset, std::string host);
+  void CheckUnsafeShutdownRemote(const remote_poolset& rp);
+};
+
+std::ostream& operator<<(std::ostream& stream, remote_poolset_tc const& p);
+
+std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams();
+
+#endif  // US_REMOTE_REPLICAS_TESTS_H

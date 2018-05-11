@@ -30,38 +30,49 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef US_REMOTE_REPLICAS_TESTS_H
-#define US_REMOTE_REPLICAS_TESTS_H
+#include "dimm/dimm.h"
+#include "inject_utils.h"
 
-#include "unsafe_shutdown.h"
+int main(int argc, char **argv) {
+  std::string usage =
+      "./INJECTER inject|check-safe|confirm-unsafe <MOUNTPOINT1> "
+      "<MOUNTPOINT2> ...";
 
-struct remote_poolset {
-  std::string host;
-  std::vector<DimmDevice> us_dimms;
-  Poolset poolset;
-  std::string GetSectionLine();
-};
+  int ret = 0;
+  try {
+    if (argc < 3) {
+      std::cerr << usage << std::endl;
+      return 1;
+    }
 
-struct remote_poolset_tc {
-  std::vector<remote_poolset> remote_poolsets;
-  Poolset poolset;
-  std::vector<DimmDevice> us_dimms;
-  bool enough_dimms;
-  bool is_syncable;
-};
+    std::vector<DimmCollection> dimm_colls;
 
-class SyncRemoteReplica
-    : public UnsafeShutdown,
-      public ::testing::WithParamInterface<remote_poolset_tc> {
- protected:
-  void SetUp() override;
-  void InjectRemote(remote_poolset rp);
-  void ConfirmInjectedRemote(remote_poolset rp);
-  std::string remote_bin_dir_;
-};
+    for (int i = 2; i < argc; ++i) {
+      dimm_colls.emplace_back(DimmCollection{argv[i]});
+    }
 
-std::ostream& operator<<(std::ostream& stream, remote_poolset_tc const& p);
+    InjectManager inject_mgmt{argv[2]};
 
-std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams();
+    if (std::string{"inject"}.compare(argv[1]) == 0) {
+      if (inject_mgmt.RecordUSCAll(dimm_colls)) {
+        return 1;
+      }
+      if (inject_mgmt.InjectAll(dimm_colls)) {
+        return 1;
+      }
+    } else if (std::string{"check-safe"}.compare(argv[1]) == 0) {
+      ret = inject_mgmt.IsUSCIncreasedBy(0, dimm_colls) ? 0 : 1;
+    } else if (std::string{"check-unsafe"}.compare(argv[1]) == 0) {
+      ret = inject_mgmt.IsUSCIncreasedBy(1, dimm_colls) ? 0 : 1;
+    } else {
+      std::cerr << usage << std::endl;
+      ret = 1;
+    }
 
-#endif  // US_REMOTE_REPLICAS_TESTS_H
+  } catch (const std::exception &e) {
+    std::cerr << "Exception was caught: " << e.what() << std::endl;
+    ret = 1;
+  }
+
+  return ret;
+}

@@ -30,27 +30,46 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef US_REMOTE_TESTER_H
-#define US_REMOTE_TESTER_H
+#include "unsafe_shutdown.h"
 
-#include <future>
-#include "exit_codes.h"
-#include "gtest/gtest.h"
-#include "ras_configXML/ras_configuration.h"
-
-extern std::unique_ptr<std::string> filter;
-extern std::unique_ptr<RASConfigurationCollection> ras_config;
-
-class USRemoteTester : public ::testing::Test {
- public:
-  void SetUp() override;
-  void TearDown() override;
-  int PhaseExecute(const std::string& filter, const std::string& arg);
-  bool RunPowerCycle();
-  bool WaitForDutsConnection(unsigned int timeout);
-  bool AllTestsFailed(int exit_code) {
-    return (exit_code != 0 && exit_code != exit_codes::partially_passed);
+std::string UnsafeShutdown::GetNormalizedTestName() {
+  std::string full_test_name = gtest_utils::GetFullTestName();
+  string_utils::ReplaceAll(full_test_name, SEPARATOR, std::string{"_"});
+  std::vector<std::string> test_suffixes{"_before_us", "_after_first_us",
+                                         "_after_second_us"};
+  for (const auto &suffix : test_suffixes) {
+    string_utils::ReplaceAll(full_test_name, suffix, std::string{""});
   }
-};
+  return full_test_name;
+}
 
-#endif /* US_REMOTE_TESTER_H */
+std::string UnsafeShutdown::GetPassedMarkerPath() {
+  return local_dimm_config->GetTestDir() + GetNormalizedTestName() + "_passed";
+}
+
+void UnsafeShutdown::Repair(std::string pool_file_path) {
+  std::string cmd = "pmempool check -ry " + pool_file_path;
+  auto out = shell_.ExecuteCommand(cmd);
+  ASSERT_EQ(0, out.GetExitCode()) << cmd << std::endl << out.GetContent();
+}
+
+bool UnsafeShutdown::PassedOnPreviousPhase() {
+  bool ret = ApiC::RegularFileExists(GetPassedMarkerPath());
+  if (ret) {
+    ApiC::RemoveFile(GetPassedMarkerPath());
+  }
+  return ret;
+}
+
+void UnsafeShutdown::CreatePassedMarker() {
+  if (gtest_utils::ThisTestPassed()) {
+    if (ApiC::CreateFileT(GetPassedMarkerPath(), "") == -1) {
+      throw std::invalid_argument("Could not create passed marker file: " +
+                                  GetPassedMarkerPath());
+    };
+  }
+}
+
+UnsafeShutdown::~UnsafeShutdown() {
+  CreatePassedMarker();
+}
