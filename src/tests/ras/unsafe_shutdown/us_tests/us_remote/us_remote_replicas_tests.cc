@@ -33,7 +33,6 @@
 #include "us_remote_replicas_tests.h"
 
 void SyncRemoteReplica::SetUp() {
-  remote_bin_dir_ = "/home/leszekl/repos/pmdk-tests/build/";  // TODO
 
   remote_poolset_tc param = GetParam();
   ASSERT_TRUE(param.enough_dimms) << "Not enough dimms specified to run test.";

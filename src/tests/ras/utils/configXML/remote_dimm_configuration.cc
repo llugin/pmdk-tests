@@ -38,8 +38,8 @@ RemoteDimmNode::RemoteDimmNode(const std::string &address,
                                const std::string &bins_dir,
                                pugi::xml_node &&node)
     : address_(address), test_dir_(test_dir), bins_dir_(bins_dir) {
-  for (auto &&it : node) {
-    std::string mount_point = it.child("mountPoint").text().get();
+  for (auto &&it : node.children("mountPoint")) {
+    std::string mount_point = it.text().get();
     if (mount_point.empty() ||
         shell_.ExecuteCommand("test -d " + mount_point).GetExitCode() != 0) {
       throw std::invalid_argument("Cannot find " + mount_point +
@@ -78,7 +78,6 @@ int RemoteDimmConfigurationsCollection::FillConfigFields(
       remote_configurations_.emplace_back(RemoteDimmNode(
           address + " -p " + port, it.child("testDir").text().as_string(),
           it.child("binsDir").text().as_string(),
-
           it.child("dimmConfiguration")));
     } catch (const std::invalid_argument &e) {
       std::cerr << "Exception was caught: " << e.what() << std::endl;
