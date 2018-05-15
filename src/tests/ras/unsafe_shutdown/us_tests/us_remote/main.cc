@@ -47,7 +47,9 @@ std::vector<DimmCollection> local_non_us_dimm_colls;
 std::vector<std::string> remote_us_dimm_mountpoints;
 std::vector<std::string> remote_non_us_dimm_mountpoints;
 
-void InitializeDimms() {
+
+
+void InitializeLocalDimms() {
   if (local_dimm_config->GetSize() > 0) {
     local_us_dimm_colls.emplace_back(local_dimm_config.get()->operator[](0));
   }
@@ -60,7 +62,10 @@ void InitializeDimms() {
   for (int i = 2; i < local_dimm_config->GetSize(); ++i) {
     local_us_dimm_colls.emplace_back(local_dimm_config.get()->operator[](i));
   }
+}
 
+
+void InitializeRemoteDimms() {
   if (remote_dimm_config->GetSize() > 0) {
     remote_us_dimm_mountpoints.emplace_back(
         remote_dimm_config.get()->operator[](0));
@@ -76,6 +81,11 @@ void InitializeDimms() {
   }
 }
 
+
+void InitializeDimms() {
+InitializeLocalDimms();
+InitializeRemoteDimms();
+}
 void CleanUp() {
   ApiC::CleanDirectory(local_dimm_config->GetTestDir());
   ApiC::RemoveDirectoryT(local_dimm_config->GetTestDir());
@@ -87,18 +97,18 @@ void CleanUp() {
 }
 
 int InjectRemote() {
-  std::string remote_injecter_path =
-      remote_dimm_config->GetBinsDir() + SEPARATOR + "INJECTER-CLI";
+  std::string remote_agent_path =
+      remote_dimm_config->GetBinsDir() + SEPARATOR + "US_REMOTE_AGENT";
   std::string mountpoints_arg;
   for (auto &mnt : remote_us_dimm_mountpoints) {
     mountpoints_arg += mnt + " ";
   }
   IShell shell{remote_dimm_config->GetAddress()};
-  std::string cmd = remote_injecter_path + " inject " + mountpoints_arg;
+  std::string cmd = remote_agent_path + " inject " + mountpoints_arg;
 
   auto out = shell.ExecuteCommand(cmd);
   if (out.GetExitCode() != 0) {
-    std::cerr << out.GetContent() << std::endl;
+    std::cerr << cmd << ": " << out.GetContent() << std::endl;
     return 1;
   }
   return 0;
@@ -114,7 +124,7 @@ int main(int argc, char **argv) {
     if (remote_dimm_configs.ReadConfigFile() != 0) {
       return 1;
     }
-    remote_dimm_config.reset(&remote_dimm_configs[0]);
+    remote_dimm_config = std::unique_ptr<RemoteDimmNode>(new RemoteDimmNode{remote_dimm_configs[0]});
 
     for (const auto &dimm_collection : *local_dimm_config) {
       ApiC::CreateDirectoryT(dimm_collection.GetMountpoint());

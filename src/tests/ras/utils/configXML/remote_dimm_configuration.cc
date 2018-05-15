@@ -51,7 +51,6 @@ RemoteDimmNode::RemoteDimmNode(const std::string &address,
 
 int RemoteDimmConfigurationsCollection::FillConfigFields(
     pugi::xml_node &&root) {
-  IShell shell;
   std::string address;
   std::string port = "22";
   size_t pos;
@@ -67,8 +66,9 @@ int RemoteDimmConfigurationsCollection::FillConfigFields(
       port = address.substr(pos + 1);
       address = address.substr(0, pos - 1);
     }
+IShell shell{address};
 
-    if (shell.ExecuteCommand("ssh " + address + " -p " + port + " exit")
+    if (shell.ExecuteCommand("exit")
             .GetExitCode() != 0) {
       std::cerr << shell.GetLastOutput().GetContent() << std::endl;
       return -1;

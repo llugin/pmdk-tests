@@ -46,22 +46,34 @@ Output<char> SyncRemoteReplica::CreateRemotePoolsetFile(Poolset& poolset,
   }
 
   IShell shell{host};
+  std::string cmd = "\"echo \'" + c + "\' > " + poolset.GetFullPath() + " \""; 
   auto out =
-      shell.ExecuteCommand("echo \'" + c + "\' > " + poolset.GetFullPath());
+      shell.ExecuteCommand(cmd);
+  
+  if (out.GetExitCode() != 0) {
+  std::cerr << cmd << std::endl;
+  }
   return out;
 }
 
 void SyncRemoteReplica::CheckUnsafeShutdownRemote(const remote_poolset& rp) {
-  std::string remote_injecter_path = remote_bin_dir_ + "INJECTER_CLI";
+  std::string remote_agent_path = 
+      remote_dimm_config->GetBinsDir() + SEPARATOR + "US_REMOTE_AGENT";
   std::string mountpoints_arg;
+  if (rp.us_dimm_mountpoints.size() == 0)
+  {
+  return;
+  }
   for (const auto& mnt : rp.us_dimm_mountpoints) {
     mountpoints_arg += mnt + " ";
   };
   IShell shell{rp.host};
-  auto out = shell.ExecuteCommand(remote_injecter_path + " confirm " +
-                                  mountpoints_arg);
+  std::string cmd = remote_agent_path + " check-unsafe " +
+                                  mountpoints_arg;
+  auto out = shell.ExecuteCommand(cmd);
+  std::cout << cmd << std::endl;
 
-  ASSERT_EQ(out.GetExitCode(), 0) << "US injection was unsuccesful."
+  ASSERT_EQ(out.GetExitCode(), 0) << cmd << " Checking USC failed."
                                   << std::endl
                                   << out.GetContent();
 }
@@ -92,7 +104,13 @@ std::ostream& operator<<(std::ostream& stream, remote_poolset_tc const& p) {
 }
 
 std::string remote_poolset::GetReplicaLine() {
-  return "REPLICA " + this->host + " ../../" + this->poolset.GetFullPath();
+  /* Remove port argument from host address representation */
+  std::string host_repr = this->host;
+  size_t found = host_repr.find(" ");
+  if (found != std::string::npos) {
+     host_repr = host_repr.substr(0, found);
+  }
+  return "REPLICA " + host_repr + " ../../" + this->poolset.GetFullPath();
 }
 
 /**
@@ -147,7 +165,7 @@ TEST_P(SyncRemoteReplica, TC10_SYNC_REMOTE_REPLICA_before_us) {
 TEST_P(SyncRemoteReplica, TC10_SYNC_REMOTE_REPLICA_after_first_us) {
   remote_poolset_tc param = GetParam();
   ASSERT_TRUE(PassedOnPreviousPhase())
-      << "Part of test before shutdown failed.";
+     << "Part of test before shutdown failed.";
   ASSERT_TRUE(inject_mgmt_.IsUSCIncreasedBy(1, param.us_dimm_colls));
 
   for (const auto& rp : param.remote_poolsets) {
@@ -368,7 +386,7 @@ std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams() {
       remote_poolset rp1;
       rp1.us_dimm_mountpoints.emplace_back(remote_us_dimm_mountpoints.front());
       std::string remote_replica_path1 =
-          remote_us_dimm_mountpoints[0] + SEPARATOR + "remote4";
+          remote_us_dimm_mountpoints[0] + SEPARATOR + "remote6";
       rp1.poolset =
           Poolset{remote_us_dimm_mountpoints[0],
                   "remote_pool4.set",
@@ -378,7 +396,7 @@ std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams() {
       remote_poolset rp2;
       rp2.us_dimm_mountpoints = {};
       std::string remote_replica_path2 =
-          remote_dimm_config->GetTestDir() + SEPARATOR + "remote5";
+          remote_dimm_config->GetTestDir() + SEPARATOR + "remote7";
       rp2.poolset =
           Poolset{remote_dimm_config->GetTestDir(),
                   "remote_pool5.set",
@@ -386,10 +404,10 @@ std::vector<remote_poolset_tc> GetPoolsetsWithRemoteReplicaParams() {
                     "9MB " + remote_replica_path2 + ".part1"}}};
       tc.remote_poolsets = {rp1, rp2};
       std::string local_master_path =
-          local_us_dimm_colls[0].GetMountpoint() + SEPARATOR + "master10";
+          local_us_dimm_colls[0].GetMountpoint() + SEPARATOR + "master11";
       tc.poolset =
           Poolset{local_us_dimm_colls[0].GetMountpoint(),
-                  "pool_10.set",
+                  "pool_11.set",
                   {{"PMEMPOOLSET", "9MB " + local_master_path + ".part0",
                     "9MB " + local_master_path + ".part1",
                     "9MB " + local_master_path + ".part2"},

@@ -30,5 +30,5 @@
 
 include(${CMAKE_CURRENT_LIST_DIR}/us_test_controller/CMakeLists.txt)
 include(${CMAKE_CURRENT_LIST_DIR}/us_tests/CMakeLists.txt)
-include(${CMAKE_CURRENT_LIST_DIR}/injecter_cli/CMakeLists.txt)
+include(${CMAKE_CURRENT_LIST_DIR}/us_remote_agent/CMakeLists.txt)
 

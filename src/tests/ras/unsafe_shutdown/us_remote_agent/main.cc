@@ -33,9 +33,16 @@
 #include "dimm/dimm.h"
 #include "inject_utils.h"
 
+void CleanUp(const std::vector<std::string>& mountpoints) {
+  for (const auto &m : mountpoints) {
+    ApiC::CleanDirectory(m);
+  }
+}
+
 int main(int argc, char **argv) {
   std::string usage =
-      "./INJECTER inject|check-safe|confirm-unsafe <MOUNTPOINT1> "
+      "./US_REMOTE_AGENT inject|check-safe|confirm-unsafe|cleanup "
+      "<MOUNTPOINT1> "
       "<MOUNTPOINT2> ...";
 
   int ret = 0;
@@ -54,16 +61,16 @@ int main(int argc, char **argv) {
     InjectManager inject_mgmt{argv[2]};
 
     if (std::string{"inject"}.compare(argv[1]) == 0) {
-      if (inject_mgmt.RecordUSCAll(dimm_colls)) {
-        return 1;
-      }
-      if (inject_mgmt.InjectAll(dimm_colls)) {
+      if (inject_mgmt.RecordUSCAll(dimm_colls) ||
+          inject_mgmt.InjectAll(dimm_colls)) {
         return 1;
       }
     } else if (std::string{"check-safe"}.compare(argv[1]) == 0) {
       ret = inject_mgmt.IsUSCIncreasedBy(0, dimm_colls) ? 0 : 1;
     } else if (std::string{"check-unsafe"}.compare(argv[1]) == 0) {
       ret = inject_mgmt.IsUSCIncreasedBy(1, dimm_colls) ? 0 : 1;
+    } else if (std::string{"cleanup"}.compare(argv[1]) == 0) {
+      CleanUp(std::vector<std::string>(argv + 2, argv +argc ));
     } else {
       std::cerr << usage << std::endl;
       ret = 1;

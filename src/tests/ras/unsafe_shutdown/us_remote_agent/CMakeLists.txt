@@ -28,11 +28,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# INJECTER-CLI
+# US_REMOTE_AGENT
 set(DIR ${CMAKE_CURRENT_LIST_DIR})
 set(PREFIX_FILTER "")
 
-file(GLOB_RECURSE injecter_cli_SRC
+file(GLOB_RECURSE us_remote_agent_SRC
 	"${DIR}/*.h"
 	"${DIR}/*.cc")
 
@@ -41,11 +41,11 @@ file(GLOB inject_utils
     "${DIR}/../inject_utils/*.cc")
     
 
-add_executable(INJECTER-CLI
-	${injecter_cli_SRC} ${inject_utils})
+add_executable(US_REMOTE_AGENT
+	${us_remote_agent_SRC} ${inject_utils})
 
-set_source_groups("${PREFIX_FILTER}" ${injecter_cli_SRC})
+set_source_groups("${PREFIX_FILTER}" ${us_remote_agent_SRC})
 include_directories(src/tests/RAS/ras_utils "${DIR}/../inject_utils")
 
-target_link_libraries(INJECTER-CLI RasUtils Utils)
-add_dependencies(INJECTER-CLI RasUtils Utils)
+target_link_libraries(US_REMOTE_AGENT RasUtils Utils)
+add_dependencies(US_REMOTE_AGENT RasUtils Utils)

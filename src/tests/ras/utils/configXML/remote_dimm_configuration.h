@@ -57,6 +57,13 @@ class RemoteDimmNode final {
         mountpoints_(temp.mountpoints_) {
   }
 
+  RemoteDimmNode(RemoteDimmNode &temp)
+      : address_(temp.address_),
+        test_dir_(temp.test_dir_),
+        bins_dir_(temp.bins_dir_),
+        mountpoints_(temp.mountpoints_) {
+  }
+
   const std::string &GetTestDir() const {
     return this->test_dir_;
   }

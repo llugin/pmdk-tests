@@ -59,7 +59,6 @@ class SyncRemoteReplica
     : public UnsafeShutdown,
       public ::testing::WithParamInterface<remote_poolset_tc> {
  public:
-  std::string remote_bin_dir_;
   void SetUp() override;
   Output<char> CreateRemotePoolsetFile(Poolset& poolset, std::string host);
   void CheckUnsafeShutdownRemote(const remote_poolset& rp);
