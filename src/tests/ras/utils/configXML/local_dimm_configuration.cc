@@ -32,25 +32,16 @@
 
 #include "local_dimm_configuration.h"
 
-int LocalDimmConfiguration::SetDimmCollections(pugi::xml_node &&node) {
-  int ret = -1;
-
-  for (auto &&it : node.children("mountPoint")) {
-    ret = 0;
+void LocalDimmConfiguration::SetDimmCollections() {
+  for (auto mountpoint : dimm_mountpoints_) {
     try {
-      DimmCollection temp = DimmCollection(it.text().get());
+      DimmCollection temp = DimmCollection(mountpoint);
       dimm_collections_.emplace_back(std::move(temp));
     } catch (const std::invalid_argument &e) {
       std::cerr << e.what() << std::endl;
-      return -1;
+      throw;
     }
   }
-
-  if (ret == -1) {
-    std::cerr << "dimmConfiguration node does not exist" << std::endl;
-  }
-
-  return ret;
 }
 
 int LocalDimmConfiguration::FillConfigFields(pugi::xml_node &&root) {
@@ -62,9 +53,36 @@ int LocalDimmConfiguration::FillConfigFields(pugi::xml_node &&root) {
   }
 
   if (SetTestDir(root, test_dir_) != 0 ||
-      SetDimmCollections(root.child("dimmConfiguration")) != 0) {
+      ParseDimmMountpoints(root.child("dimmConfiguration")) != 0) {
     return -1;
   }
 
   return 0;
+}
+const std::vector<DimmCollection> LocalDimmConfiguration::GetDimmCollections() {
+  if (dimm_collections_.empty()) {
+    SetDimmCollections();
+    return dimm_collections_;
+  }
+  return dimm_collections_;
+}
+
+int LocalDimmConfiguration::ParseDimmMountpoints(pugi::xml_node &&node) {
+  int ret = -1;
+
+  for (auto &&it : node.children("mountPoint")) {
+    ret = 0;
+    try {
+      dimm_mountpoints_.emplace_back(it.text().get());
+    } catch (const std::invalid_argument &e) {
+      std::cerr << e.what() << std::endl;
+      return -1;
+    }
+  }
+
+  if (ret == -1) {
+    std::cerr << "dimmConfiguration node does not exist" << std::endl;
+  }
+
+  return ret;
 }

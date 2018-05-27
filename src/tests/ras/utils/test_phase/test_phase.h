@@ -68,7 +68,7 @@ class TestPhase : public NonCopyable {
   }
 
  private:
-  enum class ExecutionAction { setup, check_usc, inject, cleanup };
+  enum class ExecutionAction { setup, check_usc, inject, cleanup, none };
   ExecutionAction pre_test_action_;
   ExecutionAction post_test_action_;
   std::string phase_name_;
@@ -80,6 +80,9 @@ int TestPhase<T>::RunPreTestAction() {
   switch (pre_test_action_) {
     case ExecutionAction::setup:
       ret = SetUp();
+      break;
+    case ExecutionAction::none:
+      ret = 0;
       break;
     case ExecutionAction::check_usc:
       ret = CheckUSC();
@@ -102,6 +105,8 @@ int TestPhase<T>::RunPostTestAction() {
       return Inject();
     case ExecutionAction::cleanup:
       return CleanUp();
+    case ExecutionAction::none:
+      return 0;
     default:
       throw std::invalid_argument("Invalid post execution action");
   }
@@ -109,9 +114,11 @@ int TestPhase<T>::RunPostTestAction() {
 
 template <class T>
 void TestPhase<T>::HandleCmdArgs(int argc, char** argv) {
-  const std::string usage =
-      "./" + std::string{argv[0]} + " <phase_number> <inject|cleanup>]";
-  if (argc < 3) {
+  const std::string usage = "./" + std::string{argv[0]} +
+                            " <phase_number> <inject|cleanup>]
+                            --no -
+                            inject ";
+                            if (argc < 3) {
     throw std::invalid_argument(usage);
   }
 
@@ -119,18 +126,20 @@ void TestPhase<T>::HandleCmdArgs(int argc, char** argv) {
     post_test_action_ = ExecutionAction::cleanup;
   } else if (std::string{argv[2]}.compare("inject") == 0) {
     post_test_action_ = ExecutionAction::inject;
-  } else {
-    throw std::invalid_argument(usage);
-  }
+    } else if (
+}
+else {
+  throw std::invalid_argument(usage);
+}
 
-  phase_name_ = std::string{"phase_"} + argv[1];
-  /* Modify --gtest_filter flag to run only tests from specific phase" */
-  ::testing::GTEST_FLAG(filter) =
-      ::testing::GTEST_FLAG(filter) + "*" + phase_name_ + "*";
+phase_name_ = std::string{"phase_"} + argv[1];
+/* Modify --gtest_filter flag to run only tests from specific phase" */
+::testing::GTEST_FLAG(filter) = ::testing::GTEST_FLAG(filter) +
+                                "*" + phase_name_ + "*";
 
-  if (phase_name_.compare("phase_1") == 0) {
-    pre_test_action_ = ExecutionAction::setup;
-  } else {
-    pre_test_action_ = ExecutionAction::check_usc;
-  }
+if (phase_name_.compare("phase_1") == 0) {
+  pre_test_action_ = ExecutionAction::setup;
+} else {
+  pre_test_action_ = ExecutionAction::check_usc;
+}
 }

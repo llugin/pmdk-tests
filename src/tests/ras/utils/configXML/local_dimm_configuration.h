@@ -43,7 +43,11 @@ class LocalDimmConfiguration final : public ReadConfig<LocalDimmConfiguration> {
   std::string test_dir_;
   std::vector<DimmCollection> dimm_collections_;
   int FillConfigFields(pugi::xml_node &&root);
-  int SetDimmCollections(pugi::xml_node &&node);
+  void SetDimmCollections();
+  const std::vector<DimmCollection> GetDimmCollections();
+  std::vector<std::string> dimm_mountpoints_;
+
+  int ParseDimmMountpoints(pugi::xml_node &&node);
 
  public:
   const std::string &GetTestDir() const {
