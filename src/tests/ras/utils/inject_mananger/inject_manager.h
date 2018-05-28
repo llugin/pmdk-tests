@@ -35,20 +35,25 @@
 
 #include "dimm/dimm.h"
 
+enum class InjectStrategy { all, first, last };
+
 class InjectManager {
  public:
-  InjectManager(std::string test_dir) : test_dir_(test_dir) {
+  InjectManager(std::string test_dir, InjectStrategy strategy)
+      : test_dir_{test_dir}, strategy_{strategy} {
   }
 
   bool UnsafelyShutdown(const std::vector<DimmCollection> &dimm_colls);
   bool SafelyShutdown(const std::vector<DimmCollection> &dimm_colls);
-  int RecordUSCAll(const std::vector<DimmCollection> &dimm_colls);
-  int InjectAll(const std::vector<DimmCollection> &us_dimm_colls);
+  int RecordUSC(const std::vector<DimmCollection> &dimm_colls);
+  int Inject(const std::vector<DimmCollection> &us_dimm_colls);
 
  private:
   std::string test_dir_;
+  InjectStrategy strategy_;
   int RecordDimmUSC(Dimm dimm);
   int ReadRecordedUSC(std::string usc_file_path);
+  std::vector<Dimm> DimmsToInject(const DimmCollection &us_dimm_coll);
 };
 
 #endif  // INJECT_MANAGER_H

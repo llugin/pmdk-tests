@@ -44,7 +44,6 @@ class LocalDimmConfiguration final : public ReadConfig<LocalDimmConfiguration> {
   std::vector<DimmCollection> dimm_collections_;
   int FillConfigFields(pugi::xml_node &&root);
   void SetDimmCollections();
-  const std::vector<DimmCollection> GetDimmCollections();
   std::vector<std::string> dimm_mountpoints_;
 
   int ParseDimmMountpoints(pugi::xml_node &&node);
@@ -53,19 +52,20 @@ class LocalDimmConfiguration final : public ReadConfig<LocalDimmConfiguration> {
   const std::string &GetTestDir() const {
     return this->test_dir_;
   }
-  DimmCollection &operator[](int idx) {
-    return dimm_collections_.at(idx);
+  std::string &operator[](int idx) {
+    return dimm_mountpoints_.at(idx);
   }
   int GetSize() const {
-    return dimm_collections_.size();
+    return dimm_mountpoints_.size();
   }
 
-  const std::vector<DimmCollection>::const_iterator begin() const noexcept {
-    return dimm_collections_.cbegin();
+  const std::vector<DimmCollection> GetDimmCollections();
+  const std::vector<std::string>::const_iterator begin() const noexcept {
+    return dimm_mountpoints_.cbegin();
   }
 
-  const std::vector<DimmCollection>::const_iterator end() const noexcept {
-    return dimm_collections_.cend();
+  const std::vector<std::string>::const_iterator end() const noexcept {
+    return dimm_mountpoints_.cend();
   }
 };
 

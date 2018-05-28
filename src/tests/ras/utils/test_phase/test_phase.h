@@ -54,6 +54,8 @@ class TestPhase : public NonCopyable {
   }
 
  protected:
+  InjectStrategy strategy_;
+
   int SetUp() {
     return static_cast<T*>(this)->SetUp();
   }
@@ -114,11 +116,10 @@ int TestPhase<T>::RunPostTestAction() {
 
 template <class T>
 void TestPhase<T>::HandleCmdArgs(int argc, char** argv) {
-  const std::string usage = "./" + std::string{argv[0]} +
-                            " <phase_number> <inject|cleanup>]
-                            --no -
-                            inject ";
-                            if (argc < 3) {
+  const std::string usage =
+      "./" + std::string{argv[0]} +
+      " <phase_number> <inject|cleanup|none> [all|first|last]";
+  if (argc < 3) {
     throw std::invalid_argument(usage);
   }
 
@@ -126,20 +127,38 @@ void TestPhase<T>::HandleCmdArgs(int argc, char** argv) {
     post_test_action_ = ExecutionAction::cleanup;
   } else if (std::string{argv[2]}.compare("inject") == 0) {
     post_test_action_ = ExecutionAction::inject;
-    } else if (
-}
-else {
-  throw std::invalid_argument(usage);
-}
+  } else if (std::string{argv[2]}.compare("none") == 0) {
+    post_test_action_ = ExecutionAction::none;
+  } else {
+    throw std::invalid_argument(usage);
+  }
 
-phase_name_ = std::string{"phase_"} + argv[1];
-/* Modify --gtest_filter flag to run only tests from specific phase" */
-::testing::GTEST_FLAG(filter) = ::testing::GTEST_FLAG(filter) +
-                                "*" + phase_name_ + "*";
+  phase_name_ = std::string{"phase_"} + argv[1];
+  /* Modify --gtest_filter flag to run only tests from specific phase" */
+  ::testing::GTEST_FLAG(filter) =
+      ::testing::GTEST_FLAG(filter) + "*_" + phase_name_ + "*";
 
-if (phase_name_.compare("phase_1") == 0) {
-  pre_test_action_ = ExecutionAction::setup;
-} else {
-  pre_test_action_ = ExecutionAction::check_usc;
-}
+  if (phase_name_.compare("phase_1") != 0) {
+    pre_test_action_ = ExecutionAction::check_usc;
+  } else if (std::string{argv[2]}.compare("none") == 0) {
+    pre_test_action_ = ExecutionAction::none;
+  } else {
+    pre_test_action_ = ExecutionAction::check_usc;
+  }
+
+  if (argc == 4) {
+    if (std::string{argv[3]}.compare("all") == 0) {
+      strategy_ = InjectStrategy::all;
+    } else if (std::string{argv[3]}.compare("first") == 0) {
+      strategy_ = InjectStrategy::first;
+
+    } else if (std::string{argv[3]}.compare("last") == 0) {
+      strategy_ = InjectStrategy::last;
+    } else {
+      throw std::invalid_argument("Invalid injection strategy argument " +
+                                  usage);
+    }
+  } else {
+    strategy_ = InjectStrategy::all;
+  }
 }

@@ -48,22 +48,20 @@ class UnsafeShutdown : public ::testing::Test {
 
   IShell shell_;
   LocalTestPhase& test_phase_ = LocalTestPhase::GetInstance();
-  std::vector<DimmCollection> us_dimm_colls =
-      test_phase_.GetUnsafeDimmNamespaces();
-  std::vector<DimmCollection> non_us_dimm_colls =
-      test_phase_.GetSafeDimmNamespaces();
-  PMEMobjpool* pop_ = nullptr;
-  PMEMblkpool* pbp_ = nullptr;
-  PMEMlogpool* plp_ = nullptr;
+  std::vector<std::string> us_dimm_mnts =
+      test_phase_.GetUnsafeDimmMountpoints();
+  std::vector<std::string> non_us_dimm_mnts =
+      test_phase_.GetSafeDimmMountpoints();
+  PMEMobjpool* pop_{};
+  PMEMblkpool* pbp_{};
+  PMEMlogpool* plp_{};
 
   bool PassedOnPreviousPhase();
   std::string GetNormalizedTestName();
   void Repair(std::string pool_file_path, int expected_exit = 0);
   void Sync(std::string pool_file_path, int expected_exit = 0);
-  void Transform(std::string src_path, std::string dest_path, int expected_exit = 0);
-
-  int Inject();
-  void AssertUSCIncremented(const std::vector<DimmCollection>& dimm_colls);
+  void Transform(std::string src_path, std::string dest_path,
+                 int expected_exit = 0);
 
   /* Test values used for checking data consistency on obj/log/blk pools. */
   std::vector<int> obj_data_ = {-2, 0, 12345, 1412, 1231, 23, 432, 34, 3};

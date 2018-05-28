@@ -40,8 +40,8 @@ std::ostream& operator<<(std::ostream& stream, move_param const& m) {
 std::vector<move_param> GetMoveParams() {
   std::vector<move_param> ret;
   LocalTestPhase& test_phase = LocalTestPhase::GetInstance();
-  const auto unsafe_dn = test_phase.GetUnsafeDimmNamespaces();
-  const auto safe_dn = test_phase.GetSafeDimmNamespaces();
+  const auto unsafe_dn = test_phase.GetUnsafeDimmMountpoints();
+  const auto safe_dn = test_phase.GetSafeDimmMountpoints();
   std::string test_dir = test_phase.GetTestDir();
 
   /* Move pool from US DIMM to non-DIMM */
@@ -50,7 +50,7 @@ std::vector<move_param> GetMoveParams() {
     tc.description = "from US dimm to non-dimm";
     if (unsafe_dn.size() >= 1) {
       tc.enough_dimms = true;
-      tc.src_pool_dir = unsafe_dn[0].GetMountpoint() + SEPARATOR;
+      tc.src_pool_dir = unsafe_dn[0] + SEPARATOR;
       tc.dest_pool_dir = test_dir + SEPARATOR;
     } else {
       tc.enough_dimms = false;
@@ -65,7 +65,7 @@ std::vector<move_param> GetMoveParams() {
     if (unsafe_dn.size() >= 1) {
       tc.enough_dimms = true;
       tc.src_pool_dir = test_dir + SEPARATOR;
-      tc.dest_pool_dir = unsafe_dn[0].GetMountpoint() + SEPARATOR;
+      tc.dest_pool_dir = unsafe_dn[0] + SEPARATOR;
     } else {
       tc.enough_dimms = false;
     }
@@ -78,8 +78,8 @@ std::vector<move_param> GetMoveParams() {
     tc.description = "from US dimm to non-US dimm";
     if (unsafe_dn.size() >= 1 && safe_dn.size() >= 1) {
       tc.enough_dimms = true;
-      tc.src_pool_dir = unsafe_dn[0].GetMountpoint() + SEPARATOR;
-      tc.dest_pool_dir = safe_dn[0].GetMountpoint() + SEPARATOR;
+      tc.src_pool_dir = unsafe_dn[0] + SEPARATOR;
+      tc.dest_pool_dir = safe_dn[0] + SEPARATOR;
     } else {
       tc.enough_dimms = false;
     }
@@ -92,8 +92,8 @@ std::vector<move_param> GetMoveParams() {
     tc.description = "from US dimm to US dimm";
     if (unsafe_dn.size() >= 2) {
       tc.enough_dimms = true;
-      tc.src_pool_dir = unsafe_dn[1].GetMountpoint() + SEPARATOR;
-      tc.dest_pool_dir = unsafe_dn[0].GetMountpoint() + SEPARATOR;
+      tc.src_pool_dir = unsafe_dn[1] + SEPARATOR;
+      tc.dest_pool_dir = unsafe_dn[0] + SEPARATOR;
     } else {
       tc.enough_dimms = false;
     }
@@ -106,7 +106,7 @@ std::vector<move_param> GetMoveParams() {
     tc.description = "From non US dimm to non-dimm";
     if (safe_dn.size() >= 1) {
       tc.enough_dimms = true;
-      tc.src_pool_dir = safe_dn[0].GetMountpoint() + SEPARATOR;
+      tc.src_pool_dir = safe_dn[0] + SEPARATOR;
       tc.dest_pool_dir = test_dir + SEPARATOR;
     } else {
       tc.enough_dimms = false;
@@ -121,7 +121,7 @@ std::vector<move_param> GetMoveParams() {
     if (safe_dn.size() >= 1) {
       tc.enough_dimms = true;
       tc.src_pool_dir = test_dir + SEPARATOR;
-      tc.dest_pool_dir = safe_dn[0].GetMountpoint() + SEPARATOR;
+      tc.dest_pool_dir = safe_dn[0] + SEPARATOR;
     } else {
       tc.enough_dimms = false;
     }

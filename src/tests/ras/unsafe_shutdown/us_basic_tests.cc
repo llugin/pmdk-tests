@@ -33,10 +33,10 @@
 #include "us_basic_tests.h"
 
 void UnsafeShutdownBasic::SetUp() {
-  ASSERT_LE(1, us_dimm_colls.size())
+  ASSERT_LE(1, us_dimm_mnts.size())
       << "Test needs more dimms to run than was specified.";
-  us_dimm_pool_path_ = us_dimm_colls.front().GetMountpoint() + SEPARATOR +
-                       GetNormalizedTestName() + "_pool";
+  us_dimm_pool_path_ =
+      us_dimm_mnts.front() + SEPARATOR + GetNormalizedTestName() + "_pool";
 }
 
 /**
@@ -282,10 +282,10 @@ TEST_F(UnsafeShutdownBasicClean, TC_OPEN_CLEAN_phase_2) {
 }
 
 void UnsafeShutdownBasicWithoutUS::SetUp() {
-  ASSERT_LE(1, non_us_dimm_colls.size())
+  ASSERT_LE(1, non_us_dimm_mnts.size())
       << "Test needs more dimms to run than was specified.";
-  non_us_dimm_pool_path_ = non_us_dimm_colls.front().GetMountpoint() +
-                           SEPARATOR + GetNormalizedTestName() + "_pool";
+  non_us_dimm_pool_path_ =
+      non_us_dimm_mnts.front() + SEPARATOR + GetNormalizedTestName() + "_pool";
 }
 
 /*

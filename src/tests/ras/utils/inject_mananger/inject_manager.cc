@@ -64,7 +64,7 @@ int InjectManager::RecordDimmUSC(Dimm dimm) {
   return 0;
 }
 
-int InjectManager::RecordUSCAll(const std::vector<DimmCollection> &dimm_colls) {
+int InjectManager::RecordUSC(const std::vector<DimmCollection> &dimm_colls) {
   for (const auto &dc : dimm_colls) {
     for (const auto &d : dc) {
       if (RecordDimmUSC(d) != 0) {
@@ -75,9 +75,9 @@ int InjectManager::RecordUSCAll(const std::vector<DimmCollection> &dimm_colls) {
   return 0;
 }
 
-int InjectManager::InjectAll(const std::vector<DimmCollection> &us_dimm_colls) {
+int InjectManager::Inject(const std::vector<DimmCollection> &us_dimm_colls) {
   for (const auto &dc : us_dimm_colls) {
-    for (const auto &d : dc) {
+    for (const auto &d : DimmsToInject(dc)) {
       if (d.InjectUnsafeShutdown() != 0) {
         return -1;
       }
@@ -86,10 +86,24 @@ int InjectManager::InjectAll(const std::vector<DimmCollection> &us_dimm_colls) {
   return 0;
 }
 
+std::vector<Dimm> InjectManager::DimmsToInject(
+    const DimmCollection &us_dimm_coll) {
+  switch (strategy_) {
+    case InjectStrategy::all:
+      return std::vector<Dimm>(us_dimm_coll.begin(), us_dimm_coll.end());
+    case InjectStrategy::first:
+      return std::vector<Dimm>{us_dimm_coll.begin(), us_dimm_coll.begin() + 1};
+    case InjectStrategy::last:
+      return std::vector<Dimm>{us_dimm_coll.end() - 1, us_dimm_coll.end()};
+    default:
+      throw std::invalid_argument("Unknown injection strategy type");
+  }
+}
+
 bool InjectManager::UnsafelyShutdown(
     const std::vector<DimmCollection> &dimm_colls) {
   for (const auto &dc : dimm_colls) {
-    for (const auto &d : dc) {
+    for (const auto &d : DimmsToInject(dc)) {
       int recorded_usc = ReadRecordedUSC(test_dir_ + SEPARATOR + d.GetUid());
       if (recorded_usc == -1) {
         std::cerr << "Could not read USC in dimm: " << d.GetUid()

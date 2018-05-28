@@ -39,11 +39,11 @@ class LocalTestPhase : public TestPhase<LocalTestPhase> {
   friend class TestPhase<LocalTestPhase>;
 
  public:
-  const std::vector<DimmCollection> &GetSafeDimmNamespaces() {
-    return this->safe_dimm_colls_;
+  const std::vector<std::string> &GetSafeDimmMountpoints() {
+    return this->safe_dimm_mountpoints_;
   }
-  const std::vector<DimmCollection> &GetUnsafeDimmNamespaces() {
-    return this->unsafe_dimm_colls_;
+  const std::vector<std::string> &GetUnsafeDimmMountpoints() {
+    return this->unsafe_dimm_mountpoints_;
   }
 
   const std::string &GetTestDir() {
@@ -58,8 +58,8 @@ class LocalTestPhase : public TestPhase<LocalTestPhase> {
 
  private:
   LocalDimmConfiguration local_dimm_config_;
-  std::vector<DimmCollection> safe_dimm_colls_;
-  std::vector<DimmCollection> unsafe_dimm_colls_;
+  std::vector<std::string> safe_dimm_mountpoints_;
+  std::vector<std::string> unsafe_dimm_mountpoints_;
   LocalTestPhase();
 };
 #endif  // LOCAL_TEST_PHASE_H

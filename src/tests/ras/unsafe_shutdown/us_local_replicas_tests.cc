@@ -123,8 +123,8 @@ TEST_P(SyncLocalReplica, TC_SYNC_LOCAL_REPLICA_phase_2) {
 
 std::vector<sync_local_replica_tc> GetSyncLocalReplicaParams() {
   LocalTestPhase& test_phase = LocalTestPhase::GetInstance();
-  const auto unsafe_dn = test_phase.GetUnsafeDimmNamespaces();
-  const auto safe_dn = test_phase.GetSafeDimmNamespaces();
+  const auto unsafe_dmnts = test_phase.GetUnsafeDimmMountpoints();
+  const auto safe_dmnts = test_phase.GetSafeDimmMountpoints();
 
   std::vector<sync_local_replica_tc> ret;
 
@@ -132,19 +132,16 @@ std::vector<sync_local_replica_tc> GetSyncLocalReplicaParams() {
   {
     sync_local_replica_tc tc;
     tc.description = "Healthy replica on non-us dimm.";
-    if (unsafe_dn.size() > 0 && safe_dn.size() > 0) {
+    if (unsafe_dmnts.size() > 0 && safe_dmnts.size() > 0) {
       tc.enough_dimms = true;
-      tc.poolset =
-          Poolset{safe_dn[0].GetMountpoint(),
-                  "pool_tc1.set",
-                  {{"PMEMPOOLSET", "9MB " + unsafe_dn[0].GetMountpoint() +
-                                       SEPARATOR + "tc1_master.part0",
-                    "9MB " + safe_dn[0].GetMountpoint() + SEPARATOR +
-                        "tc1_master.part1"},
-                   {"REPLICA", "9MB " + safe_dn[0].GetMountpoint() + SEPARATOR +
-                                   "tc1_replica.part0",
-                    "9MB " + safe_dn[0].GetMountpoint() + SEPARATOR +
-                        "tc1_replica.part1"}}};
+      tc.poolset = Poolset{
+          safe_dmnts[0],
+          "pool_tc1.set",
+          {{"PMEMPOOLSET",
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "tc1_master.part0",
+            "9MB " + safe_dmnts[0] + SEPARATOR + "tc1_master.part1"},
+           {"REPLICA", "9MB " + safe_dmnts[0] + SEPARATOR + "tc1_replica.part0",
+            "9MB " + safe_dmnts[0] + SEPARATOR + "tc1_replica.part1"}}};
       tc.is_syncable = true;
     } else {
       tc.enough_dimms = false;
@@ -156,15 +153,14 @@ std::vector<sync_local_replica_tc> GetSyncLocalReplicaParams() {
   {
     sync_local_replica_tc tc;
     tc.description = "Healthy replica on non-dimm device.";
-    if (unsafe_dn.size() > 0) {
+    if (unsafe_dmnts.size() > 0) {
       tc.enough_dimms = true;
       tc.poolset = Poolset{
-          unsafe_dn[0].GetMountpoint(),
+          unsafe_dmnts[0],
           "pool_tc2.set",
-          {{"PMEMPOOLSET", "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR +
-                               "tc2_master.part0",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR +
-                "tc2_master.part1"},
+          {{"PMEMPOOLSET",
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "tc2_master.part0",
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "tc2_master.part1"},
            {"REPLICA",
             "9MB " + test_phase.GetTestDir() + SEPARATOR + "tc2_replica.part0",
             "9MB " + test_phase.GetTestDir() + SEPARATOR +
@@ -182,23 +178,20 @@ std::vector<sync_local_replica_tc> GetSyncLocalReplicaParams() {
     sync_local_replica_tc tc;
     tc.description =
         "Healthy replica on non-us dimm; replica partially on us dimm";
-    if (unsafe_dn.size() > 0 && safe_dn.size() > 0) {
+    if (unsafe_dmnts.size() > 0 && safe_dmnts.size() > 0) {
       tc.enough_dimms = true;
-      tc.poolset =
-          Poolset{safe_dn[0].GetMountpoint(),
-                  "pool_tc3.set",
-                  {{"PMEMPOOLSET", "9MB " + unsafe_dn[0].GetMountpoint() +
-                                       SEPARATOR + "tc3_master.part0",
-                    "9MB " + safe_dn[0].GetMountpoint() + SEPARATOR +
-                        "tc3_master.part1"},
-                   {"REPLICA", "9MB " + unsafe_dn[0].GetMountpoint() +
-                                   SEPARATOR + "tc3_replica1.part0",
-                    "9MB " + safe_dn[0].GetMountpoint() + SEPARATOR +
-                        "tc3_replica1.part1"},
-                   {"REPLICA", "9MB " + safe_dn[0].GetMountpoint() + SEPARATOR +
-                                   "tc3_replica2.part0",
-                    "9MB " + safe_dn[0].GetMountpoint() + SEPARATOR +
-                        "tc3_replica2.part1"}}};
+      tc.poolset = Poolset{
+          safe_dmnts[0],
+          "pool_tc3.set",
+          {{"PMEMPOOLSET",
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "tc3_master.part0",
+            "9MB " + safe_dmnts[0] + SEPARATOR + "tc3_master.part1"},
+           {"REPLICA",
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "tc3_replica1.part0",
+            "9MB " + safe_dmnts[0] + SEPARATOR + "tc3_replica1.part1"},
+           {"REPLICA",
+            "9MB " + safe_dmnts[0] + SEPARATOR + "tc3_replica2.part0",
+            "9MB " + safe_dmnts[0] + SEPARATOR + "tc3_replica2.part1"}}};
       tc.is_syncable = true;
     } else {
       tc.enough_dimms = false;
@@ -210,20 +203,17 @@ std::vector<sync_local_replica_tc> GetSyncLocalReplicaParams() {
   {
     sync_local_replica_tc tc;
     tc.description = "Master and replica on same us dimm.";
-    if (unsafe_dn.size() > 0) {
+    if (unsafe_dmnts.size() > 0) {
       tc.enough_dimms = true;
       tc.poolset = Poolset{
-          unsafe_dn[0].GetMountpoint(),
+          unsafe_dmnts[0],
           "pool1.set",
           {{"PMEMPOOLSET",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR + "master1.part0",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR + "master1.part1",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR +
-                "master1.part2"},
-           {"REPLICA", "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR +
-                           "replica1.part0",
-            "18MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR +
-                "replica1.part1"}}};
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "master1.part0",
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "master1.part1",
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "master1.part2"},
+           {"REPLICA", "9MB " + unsafe_dmnts[0] + SEPARATOR + "replica1.part0",
+            "18MB " + unsafe_dmnts[0] + SEPARATOR + "replica1.part1"}}};
       tc.is_syncable = false;
     } else {
       tc.enough_dimms = false;
@@ -235,18 +225,16 @@ std::vector<sync_local_replica_tc> GetSyncLocalReplicaParams() {
   {
     sync_local_replica_tc tc;
     tc.description = "Master and replica partially on same us and non-us dimm.";
-    if (unsafe_dn.size() > 0 && safe_dn.size() > 0) {
+    if (unsafe_dmnts.size() > 0 && safe_dmnts.size() > 0) {
       tc.enough_dimms = true;
       tc.poolset = Poolset{
-          unsafe_dn[0].GetMountpoint(),
+          unsafe_dmnts[0],
           "pool2.set",
           {{"PMEMPOOLSET",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR + "master2.part0",
-            "9MB " + safe_dn[0].GetMountpoint() + SEPARATOR + "master2.part1"},
-           {"REPLICA",
-            "9MB " + safe_dn[0].GetMountpoint() + SEPARATOR + "replica2.part0",
-            "18MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR +
-                "replica2.part1"}}};
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "master2.part0",
+            "9MB " + safe_dmnts[0] + SEPARATOR + "master2.part1"},
+           {"REPLICA", "9MB " + safe_dmnts[0] + SEPARATOR + "replica2.part0",
+            "18MB " + unsafe_dmnts[0] + SEPARATOR + "replica2.part1"}}};
       tc.is_syncable = false;
     } else {
       tc.enough_dimms = false;
@@ -258,20 +246,17 @@ std::vector<sync_local_replica_tc> GetSyncLocalReplicaParams() {
   {
     sync_local_replica_tc tc;
     tc.description = "Master and replica on different us dimms.";
-    if (unsafe_dn.size() > 1) {
+    if (unsafe_dmnts.size() > 1) {
       tc.enough_dimms = true;
       tc.poolset = Poolset{
-          unsafe_dn[0].GetMountpoint(),
+          unsafe_dmnts[0],
           "pool3.set",
           {{"PMEMPOOLSET",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR + "master3.part0",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR + "master3.part1",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR +
-                "master3.part2"},
-           {"REPLICA", "9MB " + unsafe_dn[1].GetMountpoint() + SEPARATOR +
-                           "replica3.part0",
-            "18MB " + unsafe_dn[1].GetMountpoint() + SEPARATOR +
-                "replica3.part1"}}};
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "master3.part0",
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "master3.part1",
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "master3.part2"},
+           {"REPLICA", "9MB " + unsafe_dmnts[1] + SEPARATOR + "replica3.part0",
+            "18MB " + unsafe_dmnts[1] + SEPARATOR + "replica3.part1"}}};
       tc.is_syncable = false;
     } else {
       tc.enough_dimms = false;
@@ -285,20 +270,17 @@ std::vector<sync_local_replica_tc> GetSyncLocalReplicaParams() {
   {
     sync_local_replica_tc tc;
     tc.description = "Master and replica partially on two us dimms.";
-    if (unsafe_dn.size() >= 2) {
+    if (unsafe_dmnts.size() >= 2) {
       tc.enough_dimms = true;
       tc.poolset = Poolset{
-          unsafe_dn[0].GetMountpoint(),
+          unsafe_dmnts[0],
           "pool4.set",
           {{"PMEMPOOLSET",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR + "master4.part0",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR + "master4.part1",
-            "9MB " + unsafe_dn[1].GetMountpoint() + SEPARATOR +
-                "master4.part2"},
-           {"REPLICA", "9MB " + unsafe_dn[1].GetMountpoint() + SEPARATOR +
-                           "replica4.part0",
-            "18MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR +
-                "replica4.part1"}}};
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "master4.part0",
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "master4.part1",
+            "9MB " + unsafe_dmnts[1] + SEPARATOR + "master4.part2"},
+           {"REPLICA", "9MB " + unsafe_dmnts[1] + SEPARATOR + "replica4.part0",
+            "18MB " + unsafe_dmnts[0] + SEPARATOR + "replica4.part1"}}};
       tc.is_syncable = false;
     } else {
       tc.enough_dimms = false;
@@ -311,18 +293,16 @@ std::vector<sync_local_replica_tc> GetSyncLocalReplicaParams() {
     sync_local_replica_tc tc;
     tc.description =
         "Master and replica partially on non-dimm, partially on two us dimms.";
-    if (unsafe_dn.size() >= 2) {
+    if (unsafe_dmnts.size() >= 2) {
       tc.enough_dimms = true;
       tc.poolset = Poolset{
-          unsafe_dn[0].GetMountpoint(),
+          unsafe_dmnts[0],
           "pool5.set",
           {{"PMEMPOOLSET",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR + "master5.part0",
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "master5.part0",
             "9MB " + test_phase.GetTestDir() + SEPARATOR + "master5.part1",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR +
-                "master5.part2"},
-           {"REPLICA", "9MB " + unsafe_dn[1].GetMountpoint() + SEPARATOR +
-                           "replica5.part0",
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "master5.part2"},
+           {"REPLICA", "9MB " + unsafe_dmnts[1] + SEPARATOR + "replica5.part0",
             "18MB " + test_phase.GetTestDir() + SEPARATOR + "replica5.part1"}}};
       tc.is_syncable = false;
     } else {
@@ -336,24 +316,19 @@ std::vector<sync_local_replica_tc> GetSyncLocalReplicaParams() {
     sync_local_replica_tc tc;
     tc.description =
         "Master on us dimm 1, replica on us_dimm 1, replica on us_dimm 2";
-    if (unsafe_dn.size() >= 2) {
+    if (unsafe_dmnts.size() >= 2) {
       tc.enough_dimms = true;
       tc.poolset = Poolset{
-          unsafe_dn[0].GetMountpoint(),
+          unsafe_dmnts[0],
           "pool6.set",
           {{"PMEMPOOLSET",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR + "master6.part0",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR + "master6.part1",
-            "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR +
-                "master6.part2"},
-           {"REPLICA", "9MB " + unsafe_dn[1].GetMountpoint() + SEPARATOR +
-                           "replica6a.part0",
-            "18MB " + unsafe_dn[1].GetMountpoint() + SEPARATOR +
-                "replica6a.part1"},
-           {"REPLICA", "9MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR +
-                           "replica6b.part0",
-            "18MB " + unsafe_dn[0].GetMountpoint() + SEPARATOR +
-                "replica6b.part1"}}};
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "master6.part0",
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "master6.part1",
+            "9MB " + unsafe_dmnts[0] + SEPARATOR + "master6.part2"},
+           {"REPLICA", "9MB " + unsafe_dmnts[1] + SEPARATOR + "replica6a.part0",
+            "18MB " + unsafe_dmnts[1] + SEPARATOR + "replica6a.part1"},
+           {"REPLICA", "9MB " + unsafe_dmnts[0] + SEPARATOR + "replica6b.part0",
+            "18MB " + unsafe_dmnts[0] + SEPARATOR + "replica6b.part1"}}};
       tc.is_syncable = false;
     } else {
       tc.enough_dimms = false;
@@ -367,20 +342,19 @@ INSTANTIATE_TEST_CASE_P(UnsafeShutdown, SyncLocalReplica,
                         ::testing::ValuesIn(GetSyncLocalReplicaParams()));
 
 void UnsafeShutdownTransform::SetUp() {
-  ASSERT_LE(1, us_dimm_colls.size())
+  ASSERT_LE(1, us_dimm_mnts.size())
       << "Test needs more us dimms to run than was specified.";
-  ASSERT_LE(1, non_us_dimm_colls.size())
+  ASSERT_LE(1, non_us_dimm_mnts.size())
       << "Test needs more non-us dimms to run than was specified.";
 
-  std::string us_dimm0_master11_path =
-      us_dimm_colls[0].GetMountpoint() + SEPARATOR + "master11";
+  std::string us_dimm0_master11_path = us_dimm_mnts[0] + SEPARATOR + "master11";
   std::string non_us_dimm_replica11_path =
-      non_us_dimm_colls[0].GetMountpoint() + SEPARATOR + "replica11";
+      non_us_dimm_mnts[0] + SEPARATOR + "replica11";
   std::string us_dimm0_replica11_path =
-      us_dimm_colls[0].GetMountpoint() + SEPARATOR + "replica11";
+      us_dimm_mnts[0] + SEPARATOR + "replica11";
 
   origin_ =
-      Poolset(us_dimm_colls[0].GetMountpoint(), "pool11_origin.set",
+      Poolset(us_dimm_mnts[0], "pool11_origin.set",
               {
                   {"PMEMPOOLSET", "9MB " + us_dimm0_master11_path + ".part0",
                    "9MB " + us_dimm0_master11_path + ".part1",
@@ -389,7 +363,7 @@ void UnsafeShutdownTransform::SetUp() {
                    "18MB " + non_us_dimm_replica11_path + ".part1"},
               });
   added_ =
-      Poolset(us_dimm_colls[0].GetMountpoint(), "pool11_added.set",
+      Poolset(us_dimm_mnts[0], "pool11_added.set",
               {
                   {"PMEMPOOLSET", "9MB " + us_dimm0_master11_path + ".part0",
                    "9MB " + us_dimm0_master11_path + ".part1",
@@ -400,7 +374,7 @@ void UnsafeShutdownTransform::SetUp() {
                    "18MB " + us_dimm0_replica11_path + ".part1"},
               });
   final_ =
-      Poolset(us_dimm_colls[0].GetMountpoint(), "pool11_final.set",
+      Poolset(us_dimm_mnts[0], "pool11_final.set",
               {
                   {"PMEMPOOLSET", "9MB " + us_dimm0_master11_path + ".part0",
                    "9MB " + us_dimm0_master11_path + ".part1",

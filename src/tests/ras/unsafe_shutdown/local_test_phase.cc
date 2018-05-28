@@ -38,21 +38,21 @@ LocalTestPhase::LocalTestPhase() {
   }
 
   if (local_dimm_config_.GetSize() > 0) {
-    unsafe_dimm_colls_.emplace_back(local_dimm_config_[0]);
+    unsafe_dimm_mountpoints_.emplace_back(local_dimm_config_[0]);
   }
 
   if (local_dimm_config_.GetSize() > 1) {
-    safe_dimm_colls_.emplace_back(local_dimm_config_[1]);
+    safe_dimm_mountpoints_.emplace_back(local_dimm_config_[1]);
   }
 
   for (int i = 2; i < local_dimm_config_.GetSize(); ++i) {
-    unsafe_dimm_colls_.emplace_back(local_dimm_config_[i]);
+    unsafe_dimm_mountpoints_.emplace_back(local_dimm_config_[i]);
   }
 }
 
 int LocalTestPhase::SetUp() {
   for (const auto &dimm_collection : local_dimm_config_) {
-    if (ApiC::CreateDirectoryT(dimm_collection.GetMountpoint()) != 0) {
+    if (ApiC::CreateDirectoryT(dimm_collection) != 0) {
       return 1;
     }
   }
@@ -60,13 +60,18 @@ int LocalTestPhase::SetUp() {
 }
 
 int LocalTestPhase::Inject() {
-  InjectManager inject_mgmt{local_dimm_config_.GetTestDir()};
-  if (inject_mgmt.RecordUSCAll(std::vector<DimmCollection>{
-          local_dimm_config_.begin(), local_dimm_config_.end()}) != 0) {
+  InjectManager inject_mgmt{local_dimm_config_.GetTestDir(), strategy_};
+
+  if (inject_mgmt.RecordUSC(local_dimm_config_.GetDimmCollections()) != 0) {
     return 1;
   }
 
-  if (inject_mgmt.InjectAll(unsafe_dimm_colls_)) {
+  std::vector<DimmCollection> unsafe_dimm_namespaces;
+  for (const auto &mountpoint : unsafe_dimm_mountpoints_) {
+    unsafe_dimm_namespaces.emplace_back(DimmCollection{mountpoint});
+  }
+
+  if (inject_mgmt.Inject(unsafe_dimm_namespaces)) {
     return 1;
   }
 
@@ -74,9 +79,19 @@ int LocalTestPhase::Inject() {
 }
 
 int LocalTestPhase::CheckUSC() {
-  InjectManager inject_mgmt{local_dimm_config_.GetTestDir()};
-  if (!inject_mgmt.SafelyShutdown(safe_dimm_colls_) ||
-      !inject_mgmt.UnsafelyShutdown(unsafe_dimm_colls_)) {
+  InjectManager inject_mgmt{local_dimm_config_.GetTestDir(), strategy_};
+  std::vector<DimmCollection> safe_dimm_namespaces;
+  std::vector<DimmCollection> unsafe_dimm_namespaces;
+
+  for (auto &mountpoint : unsafe_dimm_mountpoints_) {
+    unsafe_dimm_namespaces.emplace_back(DimmCollection{mountpoint});
+  }
+
+  for (auto &mountpoint : safe_dimm_mountpoints_) {
+    safe_dimm_namespaces.emplace_back(DimmCollection{mountpoint});
+  }
+  if (!inject_mgmt.SafelyShutdown(safe_dimm_namespaces) ||
+      !inject_mgmt.UnsafelyShutdown(unsafe_dimm_namespaces)) {
     return 1;
   }
   return 0;
@@ -87,8 +102,8 @@ int LocalTestPhase::CleanUp() {
   ApiC::RemoveDirectoryT(local_dimm_config_.GetTestDir());
 
   for (const auto &dimm_collection : local_dimm_config_) {
-    ApiC::CleanDirectory(dimm_collection.GetMountpoint());
-    ApiC::RemoveDirectoryT(dimm_collection.GetMountpoint());
+    ApiC::CleanDirectory(dimm_collection);
+    ApiC::RemoveDirectoryT(dimm_collection);
   }
   return 0;
 }
