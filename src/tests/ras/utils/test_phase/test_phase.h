@@ -54,8 +54,8 @@ class TestPhase : public NonCopyable {
   }
 
  protected:
-  int SetUp() {
-    return static_cast<T*>(this)->SetUp();
+  int Begin() {
+    return static_cast<T*>(this)->Begin();
   }
   int Inject() {
     return static_cast<T*>(this)->Inject();
@@ -63,8 +63,8 @@ class TestPhase : public NonCopyable {
   int CheckUSC() {
     return static_cast<T*>(this)->CheckUSC();
   }
-  int CleanUp() {
-    return static_cast<T*>(this)->CleanUp();
+  int End() {
+    return static_cast<T*>(this)->End();
   }
 
  private:
@@ -76,23 +76,14 @@ class TestPhase : public NonCopyable {
 
 template <class T>
 int TestPhase<T>::RunPreTestAction() {
-  int ret;
   switch (pre_test_action_) {
     case ExecutionAction::setup:
-      ret = SetUp();
-      break;
+      return Begin();
     case ExecutionAction::check_usc:
-      ret = CheckUSC();
-      break;
+      return CheckUSC();
     default:
-      ret = 0;
+      return 0;
   }
-  if (ret != 0) {
-    std::cerr << "Action before test execution failed, running CleanUp"
-              << std::endl;
-    CleanUp();
-  }
-  return ret;
 }
 
 template <class T>
@@ -101,7 +92,7 @@ int TestPhase<T>::RunPostTestAction() {
     case ExecutionAction::inject:
       return Inject();
     case ExecutionAction::cleanup:
-      return CleanUp();
+      return End();
     default:
       throw std::invalid_argument("Invalid post execution action");
   }

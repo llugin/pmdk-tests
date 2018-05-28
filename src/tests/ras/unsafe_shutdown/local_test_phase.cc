@@ -49,8 +49,15 @@ LocalTestPhase::LocalTestPhase() {
     unsafe_dimm_colls_.emplace_back(local_dimm_config_[i]);
   }
 }
+void LocalTestPhase::SetUp() {
+  ASSERT_EQ(0, RunPreTestAction());
+}
 
-int LocalTestPhase::SetUp() {
+void LocalTestPhase::TearDown() {
+  ASSERT_EQ(0, RunPostTestAction());
+}
+
+int LocalTestPhase::Begin() {
   for (const auto &dimm_collection : local_dimm_config_) {
     if (ApiC::CreateDirectoryT(dimm_collection.GetMountpoint()) != 0) {
       return 1;
@@ -82,7 +89,7 @@ int LocalTestPhase::CheckUSC() {
   return 0;
 }
 
-int LocalTestPhase::CleanUp() {
+int LocalTestPhase::End() {
   ApiC::CleanDirectory(local_dimm_config_.GetTestDir());
   ApiC::RemoveDirectoryT(local_dimm_config_.GetTestDir());
 

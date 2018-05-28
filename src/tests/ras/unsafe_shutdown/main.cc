@@ -54,19 +54,16 @@ int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     test_phase.HandleCmdArgs(argc, argv);
 
-    ret = test_phase.RunPreTestAction();
-    if (ret != 0) {
-      return ret;
+    if (::testing::AddGlobalTestEnvironment(&test_phase) != &test_phase) {
+      std::cerr << "FAILED: "
+                << "Creating test phase global environment failed" << std::endl;
+      return 1;
     }
+
     ret = RUN_ALL_TESTS();
 
     if (PartiallyPassed()) {
       ret = exit_codes::partially_passed;
-    }
-
-    int post_test_ret = test_phase.RunPostTestAction();
-    if (post_test_ret != 0) {
-      ret = post_test_ret;
     }
   } catch (const std::exception &e) {
     std::cerr << "Exception was caught: " << e.what() << std::endl;

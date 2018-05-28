@@ -35,7 +35,8 @@
 #include "exit_codes.h"
 #include "test_phase/test_phase.h"
 
-class LocalTestPhase : public TestPhase<LocalTestPhase> {
+class LocalTestPhase : public TestPhase<LocalTestPhase>,
+                       public ::testing::Environment {
   friend class TestPhase<LocalTestPhase>;
 
  public:
@@ -50,11 +51,14 @@ class LocalTestPhase : public TestPhase<LocalTestPhase> {
     return this->local_dimm_config_.GetTestDir();
   }
 
+  void SetUp();
+  void TearDown();
+
  protected:
-  int SetUp();
+  int Begin();
   int Inject();
   int CheckUSC();
-  int CleanUp();
+  int End();
 
  private:
   LocalDimmConfiguration local_dimm_config_;
