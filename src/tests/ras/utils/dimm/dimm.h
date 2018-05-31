@@ -33,6 +33,8 @@
 #ifndef PMDK_TESTS_SRC_RAS_UTILS_DIMM_H_
 #define PMDK_TESTS_SRC_RAS_UTILS_DIMM_H_
 
+#ifdef __linux__
+
 #include <ndctl/libdaxctl.h>
 #include <ndctl/libndctl.h>
 #include <sys/stat.h>
@@ -41,6 +43,8 @@
 #define FOREACH_BUS_REGION_NAMESPACE(ctx, bus, region, ndns)    \
   ndctl_bus_foreach(ctx, bus) ndctl_region_foreach(bus, region) \
       ndctl_namespace_foreach(region, ndns)
+
+
 
 class Dimm final {
  private:
@@ -92,5 +96,7 @@ class DimmCollection final {
 
   ~DimmCollection();
 };
+
+#endif
 
 #endif  // !PMDK_TESTS_SRC_RAS_UTILS_DIMM_H_

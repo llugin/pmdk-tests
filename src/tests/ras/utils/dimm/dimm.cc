@@ -29,9 +29,12 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifdef __linux__
 
 #include "dimm.h"
-#include <linux/limits.h>
+
+
+//#include <linux/limits.h>
 #include <cstring>
 
 const int USC_VALID_FLAG = 1 << 5;
@@ -183,3 +186,5 @@ DimmCollection::~DimmCollection() {
 
   ctx_ = nullptr;
 }
+
+#endif //inux

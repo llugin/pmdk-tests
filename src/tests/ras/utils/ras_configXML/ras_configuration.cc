@@ -32,6 +32,8 @@
 
 #include "ras_configuration.h"
 
+#ifdef __linux__
+
 DUT::DUT(const std::string& address, const std::string& power_cycle_command,
          const std::string& bin_dir)
     : address_(address),
@@ -103,3 +105,5 @@ int RASConfigurationCollection::FillConfigFields(pugi::xml_node&& root) {
 
   return ret;
 }
+
+#endif // linux

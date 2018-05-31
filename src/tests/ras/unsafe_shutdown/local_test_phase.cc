@@ -60,6 +60,7 @@ int LocalTestPhase::SetUp() {
 }
 
 int LocalTestPhase::Inject() {
+#ifdef __linux__
   InjectManager inject_mgmt{local_dimm_config_.GetTestDir(), strategy_};
 
   if (inject_mgmt.RecordUSC(local_dimm_config_.GetDimmCollections()) != 0) {
@@ -74,11 +75,15 @@ int LocalTestPhase::Inject() {
   if (inject_mgmt.Inject(unsafe_dimm_namespaces)) {
     return 1;
   }
+#endif
+
 
   return 0;
 }
 
+
 int LocalTestPhase::CheckUSC() {
+#ifdef __linux__
   InjectManager inject_mgmt{local_dimm_config_.GetTestDir(), strategy_};
   std::vector<DimmCollection> safe_dimm_namespaces;
   std::vector<DimmCollection> unsafe_dimm_namespaces;
@@ -94,6 +99,7 @@ int LocalTestPhase::CheckUSC() {
       !inject_mgmt.UnsafelyShutdown(unsafe_dimm_namespaces)) {
     return 1;
   }
+#endif
   return 0;
 }
 

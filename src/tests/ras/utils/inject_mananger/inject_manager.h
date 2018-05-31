@@ -33,9 +33,11 @@
 #ifndef INJECT_MANAGER_H
 #define INJECT_MANAGER_H
 
-#include "dimm/dimm.h"
 
 enum class InjectStrategy { all, first, last };
+
+#ifdef __linux__
+#include "dimm/dimm.h"
 
 class InjectManager {
  public:
@@ -55,5 +57,6 @@ class InjectManager {
   int ReadRecordedUSC(std::string usc_file_path);
   std::vector<Dimm> DimmsToInject(const DimmCollection &us_dimm_coll);
 };
+#endif
 
 #endif  // INJECT_MANAGER_H

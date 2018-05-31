@@ -39,12 +39,14 @@ file(GLOB_RECURSE ras_utils_SRC
 
 set_source_groups("${PREFIX_FILTER}" ${ras_utils_SRC})
 
+if (NOT WIN32)
 pkg_check_modules(Libndctl REQUIRED libndctl)
 include_directories(${Libndctl_INCLUDE_DIRS})
 link_directories(${Libndctl_LIBRARY_DIRS})
 pkg_check_modules(Libdaxctl REQUIRED libdaxctl)
 include_directories(${Libdaxctl_INCLUDE_DIRS})
 link_directories(${Libdaxctl_LIBRARY_DIRS})
+endif ()
 
 add_library(RasUtils STATIC ${ras_utils_SRC})
 add_dependencies(RasUtils Utils)

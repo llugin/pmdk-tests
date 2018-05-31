@@ -32,6 +32,7 @@
 
 #include "local_dimm_configuration.h"
 
+#ifdef __linux__
 void LocalDimmConfiguration::SetDimmCollections() {
   for (auto mountpoint : dimm_mountpoints_) {
     try {
@@ -43,6 +44,7 @@ void LocalDimmConfiguration::SetDimmCollections() {
     }
   }
 }
+#endif
 
 int LocalDimmConfiguration::FillConfigFields(pugi::xml_node &&root) {
   root = root.child("localConfiguration");
@@ -59,6 +61,8 @@ int LocalDimmConfiguration::FillConfigFields(pugi::xml_node &&root) {
 
   return 0;
 }
+
+#ifdef __linux__
 const std::vector<DimmCollection> LocalDimmConfiguration::GetDimmCollections() {
   if (dimm_collections_.empty()) {
     SetDimmCollections();
@@ -66,6 +70,7 @@ const std::vector<DimmCollection> LocalDimmConfiguration::GetDimmCollections() {
   }
   return dimm_collections_;
 }
+#endif
 
 int LocalDimmConfiguration::ParseDimmMountpoints(pugi::xml_node &&node) {
   int ret = -1;

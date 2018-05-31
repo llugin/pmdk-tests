@@ -32,6 +32,8 @@
 
 #include "inject_manager.h"
 
+#ifdef __linux__
+
 int InjectManager::ReadRecordedUSC(std::string usc_file_path) {
   std::string content;
   if (ApiC::ReadFile(usc_file_path, content) != 0) {
@@ -144,3 +146,5 @@ bool InjectManager::SafelyShutdown(
   }
   return ret;
 }
+
+#endif

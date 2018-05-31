@@ -34,16 +34,23 @@
 #define PMDK_TESTS_SRC_UTILS_CONFIGXML_LOCAL_DIMM_CONFIGURATION_H_
 
 #include "configXML/read_config.h"
+
+#ifdef __linux__
 #include "dimm/dimm.h"
+#endif
+
 #include "pugixml.hpp"
 
 class LocalDimmConfiguration final : public ReadConfig<LocalDimmConfiguration> {
  private:
   friend class ReadConfig<LocalDimmConfiguration>;
   std::string test_dir_;
-  std::vector<DimmCollection> dimm_collections_;
   int FillConfigFields(pugi::xml_node &&root);
+
+#ifdef __linux__
+  std::vector<DimmCollection> dimm_collections_;
   void SetDimmCollections();
+#endif
   std::vector<std::string> dimm_mountpoints_;
 
   int ParseDimmMountpoints(pugi::xml_node &&node);
@@ -59,7 +66,9 @@ class LocalDimmConfiguration final : public ReadConfig<LocalDimmConfiguration> {
     return dimm_mountpoints_.size();
   }
 
+#ifdef __linux__
   const std::vector<DimmCollection> GetDimmCollections();
+#endif
   const std::vector<std::string>::const_iterator begin() const noexcept {
     return dimm_mountpoints_.cbegin();
   }

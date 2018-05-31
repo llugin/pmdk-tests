@@ -30,14 +30,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "configXML/local_dimm_configuration.h"
+//#include "configXML/local_dimm_configuration.h"
 #include "exit_codes.h"
 #include "gtest/gtest.h"
-#include "inject_mananger/inject_manager.h"
-#include "local_test_phase.h"
+// #include "inject_mananger/inject_manager.h"
+ #include "local_test_phase.h"
 #include "shell/i_shell.h"
 
 bool PartiallyPassed() {
+  return true;
   ::testing::UnitTest *ut = ::testing::UnitTest::GetInstance();
   return ut->successful_test_count() > 0 && ut->failed_test_count() > 0;
 }
@@ -45,6 +46,7 @@ bool PartiallyPassed() {
 bool NoTestsPassed() {
   ::testing::UnitTest *ut = ::testing::UnitTest::GetInstance();
   return ut->successful_test_count() == 0;
+return false;
 }
 
 int main(int argc, char **argv) {

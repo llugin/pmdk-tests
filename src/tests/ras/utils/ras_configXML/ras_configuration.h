@@ -33,6 +33,8 @@
 #ifndef PMDK_TESTS_SRC_UTILS_CONFIGXML_RAS_CONFIGURATION_H_
 #define PMDK_TESTS_SRC_UTILS_CONFIGXML_RAS_CONFIGURATION_H_
 
+#ifdef __linux__
+
 #include <chrono>
 #include <thread>
 #include "configXML/read_config.h"
@@ -97,5 +99,6 @@ class RASConfigurationCollection final
     return duts_collection_.end();
   }
 };
+#endif // linux
 
 #endif  // !PMDK_TESTS_SRC_UTILS_CONFIGXML_RAS_CONFIGURATION_H_

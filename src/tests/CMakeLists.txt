@@ -30,12 +30,12 @@
 
 include(${CMAKE_CURRENT_LIST_DIR}/pmempools/CMakeLists.txt)
 include(${CMAKE_CURRENT_LIST_DIR}/pmemobj/CMakeLists.txt)
+include(${CMAKE_CURRENT_LIST_DIR}/ras/CMakeLists.txt)
 
 if (NOT WIN32)
 		pkg_check_modules(Libndctl QUIET libndctl)
 		pkg_check_modules(Libdaxctl QUIET libdaxctl)
 		if (Libndctl_FOUND AND Libdaxctl_FOUND)
-			include(${CMAKE_CURRENT_LIST_DIR}/ras/CMakeLists.txt)
 		else ()
 			if (NOT Libndctl_FOUND AND NOT Libdaxctl_FOUND)
 				message(WARNING "Cannot find libndctl and libdaxctl libraries. Skip building RAS tests.")
